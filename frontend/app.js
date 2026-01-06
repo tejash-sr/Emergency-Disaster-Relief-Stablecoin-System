@@ -30,19 +30,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Setup event listeners first
     setupEventListeners();
     
-    // Check if we should show view-only mode (Skip Login)
-    const urlParams = new URLSearchParams(window.location.search);
-    const viewOnly = urlParams.get('view') === 'public' || sessionStorage.getItem('viewOnlyMode') === 'true';
-    
-    if (viewOnly) {
-        // Skip login, go directly to public view
-        document.getElementById('loading-screen').classList.add('hidden');
-        enterViewOnlyMode();
-    } else {
-        // Show login screen
-        document.getElementById('loading-screen').classList.add('hidden');
-        document.getElementById('login-screen').classList.remove('hidden');
-    }
+    // ALWAYS show login screen first (user must click button to view as guest)
+    document.getElementById('loading-screen').classList.add('hidden');
+    document.getElementById('login-screen').classList.remove('hidden');
     
     // Clear any previous connection preferences on page load
     sessionStorage.removeItem('rememberWalletConnection');
@@ -362,6 +352,7 @@ function logout() {
 // ============================================
 
 async function enterViewOnlyMode() {
+    console.log('🔍 Entering view-only mode...');
     sessionStorage.setItem('viewOnlyMode', 'true');
     currentRole = 'viewer';
     
@@ -372,41 +363,90 @@ async function enterViewOnlyMode() {
             ? 'http://localhost:8545' 
             : 'https://ethereum-sepolia-rpc.publicnode.com';
         
+        console.log('📡 Connecting to RPC:', rpcUrl);
         provider = new ethers.JsonRpcProvider(rpcUrl);
+        
+        // Test connection first
+        try {
+            const network = await provider.getNetwork();
+            console.log('✅ Connected to network:', network.chainId);
+        } catch (connError) {
+            console.error('❌ Cannot connect to blockchain:', connError);
+            if (CONFIG.NETWORK === 'localhost') {
+                showToast('⚠️ Cannot connect to localhost:8545. Please start Hardhat node first: npx hardhat node', 'error');
+            } else {
+                showToast('⚠️ Cannot connect to Sepolia network. Check your internet connection.', 'error');
+            }
+            return;
+        }
+        
+        console.log('📄 Initializing contracts...');
+        console.log('Stablecoin:', CONFIG.RELIEF_STABLECOIN);
+        console.log('FundManager:', CONFIG.RELIEF_FUND_MANAGER);
+        
+        // Check if ABIs are loaded
+        if (typeof STABLECOIN_ABI === 'undefined' || typeof FUND_MANAGER_ABI === 'undefined') {
+            console.error('❌ ABIs not loaded!');
+            showToast('Contract ABIs not loaded. Please refresh the page.', 'error');
+            return;
+        }
         
         stablecoin = new ethers.Contract(CONFIG.RELIEF_STABLECOIN, STABLECOIN_ABI, provider);
         fundManager = new ethers.Contract(CONFIG.RELIEF_FUND_MANAGER, FUND_MANAGER_ABI, provider);
+        
+        // Test contract calls
+        try {
+            const supply = await stablecoin.totalSupply();
+            console.log('✅ Contracts working! Total supply:', ethers.formatEther(supply));
+        } catch (contractError) {
+            console.error('❌ Contract call failed:', contractError);
+            showToast('Contracts not deployed on this network. Deploy contracts first.', 'error');
+            return;
+        }
         
         // Hide login, show app
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-screen').classList.remove('hidden');
         
-        // Update UI for view-only mode
-        document.getElementById('user-address').textContent = 'Public Viewer';
-        document.getElementById('user-role').textContent = 'View Only';
-        document.getElementById('wallet-icon').innerHTML = '👁️';
+        // Update UI for view-only mode (with safety checks)
+        const userAddress = document.getElementById('user-address');
+        const userRole = document.getElementById('user-role');
+        const walletIcon = document.getElementById('wallet-icon');
+        
+        if (userAddress) userAddress.textContent = 'Public Viewer';
+        if (userRole) userRole.textContent = 'View Only';
+        if (walletIcon) walletIcon.innerHTML = '👁️';
         
         // Add banner notification
-        const banner = document.createElement('div');
-        banner.className = 'view-only-banner';
-        banner.innerHTML = `
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 20px; text-align: center; font-size: 14px; border-radius: 8px; margin: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                👁️ <strong>Public View Mode</strong> - You're viewing public data. <a href="#" onclick="document.getElementById('app-screen').classList.add('hidden'); document.getElementById('login-screen').classList.remove('hidden'); sessionStorage.removeItem('viewOnlyMode');" style="color: #ffd700; text-decoration: underline;">Connect wallet</a> to interact.
-            </div>
-        `;
-        document.querySelector('.main-content').insertBefore(banner, document.querySelector('.main-content').firstChild);
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent && mainContent.firstChild) {
+            const banner = document.createElement('div');
+            banner.className = 'view-only-banner';
+            banner.innerHTML = `
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 20px; text-align: center; font-size: 14px; border-radius: 8px; margin: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    👁️ <strong>Public View Mode</strong> - You're viewing public data. <a href="#" onclick="location.reload();" style="color: #ffd700; text-decoration: underline;">Connect wallet</a> to interact.
+                </div>
+            `;
+            mainContent.insertBefore(banner, mainContent.firstChild);
+        }
         
         // Show public-friendly navigation
         showPublicNavigation();
         
         // Start on dashboard
+        console.log('📊 Loading dashboard...');
         navigateTo('dashboard');
         
         showToast('👁️ Viewing in public mode - Connect wallet to interact', 'info');
         
     } catch (error) {
         console.error('View-only mode error:', error);
-        showToast('Unable to load public data. Please try again.', 'error');
+        showToast('Unable to load public data: ' + error.message, 'error');
+        
+        // Show login screen again
+        document.getElementById('app-screen').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+        sessionStorage.removeItem('viewOnlyMode');
     }
 }
 

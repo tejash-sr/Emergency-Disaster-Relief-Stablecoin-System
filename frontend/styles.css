@@ -598,9 +598,13 @@ input, select, textarea {
 }
 
 .guest-btn:hover {
-    background: rgba(255,255,255,0.1) !important;
-    border-color: rgba(255,255,255,0.5) !important;
-    transform: translateY(-2px);
+    background: linear-gradient(135deg, #7c8cfa 0%, #8b5bc2 100%) !important;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5) !important;
+}
+
+.guest-btn:active {
+    transform: translateY(-1px);
 }
 
 .view-only-banner {
