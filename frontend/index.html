@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Leaflet CSS for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
 </head>
 <body>
     <!-- Loading Screen -->
@@ -80,7 +83,6 @@
                     </div>
 
                     <button id="connect-btn" class="connect-btn">
-                        <i class="fab fa-ethereum"></i>
                         Connect MetaMask
                     </button>
 
@@ -186,6 +188,14 @@
                         <i class="fas fa-search"></i>
                         <span>Audit Trail</span>
                     </a>
+                    <a href="#" class="nav-item" data-page="map">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <span>Relief Map</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="donate">
+                        <i class="fas fa-donate"></i>
+                        <span>Donor Portal</span>
+                    </a>
                 </div>
             </nav>
 
@@ -241,6 +251,44 @@
             <div class="page-content">
                 <!-- Dashboard Page -->
                 <section id="page-dashboard" class="page active">
+                    <!-- Fund Summary Panel for Admin -->
+                    <div class="fund-summary-panel admin-only">
+                        <div class="fund-summary-header">
+                            <h3><i class="fas fa-chart-line"></i> Fund Overview</h3>
+                            <span class="live-badge"><i class="fas fa-circle"></i> Live</span>
+                        </div>
+                        <div class="fund-summary-grid">
+                            <div class="fund-item">
+                                <div class="fund-icon" style="background: var(--primary-bg); color: var(--primary);"><i class="fas fa-vault"></i></div>
+                                <div class="fund-details">
+                                    <span class="fund-value" id="fund-total-supply">0.00</span>
+                                    <span class="fund-label">Total Minted (Supply)</span>
+                                </div>
+                            </div>
+                            <div class="fund-item">
+                                <div class="fund-icon" style="background: var(--success-bg); color: var(--success);"><i class="fas fa-hand-holding-usd"></i></div>
+                                <div class="fund-details">
+                                    <span class="fund-value" id="fund-distributed">0.00</span>
+                                    <span class="fund-label">Total Distributed</span>
+                                </div>
+                            </div>
+                            <div class="fund-item">
+                                <div class="fund-icon" style="background: var(--warning-bg); color: var(--warning);"><i class="fas fa-shopping-cart"></i></div>
+                                <div class="fund-details">
+                                    <span class="fund-value" id="fund-spent">0.00</span>
+                                    <span class="fund-label">Total Spent</span>
+                                </div>
+                            </div>
+                            <div class="fund-item">
+                                <div class="fund-icon" style="background: var(--secondary); color: white;"><i class="fas fa-wallet"></i></div>
+                                <div class="fund-details">
+                                    <span class="fund-value" id="fund-remaining">0.00</span>
+                                    <span class="fund-label">Remaining with Beneficiaries</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="stats-row">
                         <div class="stat-card gradient-1">
                             <div class="stat-icon">
@@ -904,8 +952,181 @@
                         </div>
                     </div>
                 </section>
+
+                <!-- Relief Map Page -->
+                <section id="page-map" class="page">
+                    <div class="map-header">
+                        <h2><i class="fas fa-map-marked-alt"></i> Disaster Relief Geographic Map</h2>
+                        <p>Real-time visualization of fund distribution across affected regions</p>
+                    </div>
+                    <div class="map-container">
+                        <div id="relief-map" class="relief-map"></div>
+                        <div class="map-legend-panel">
+                            <h4>Map Legend</h4>
+                            <div class="map-legend-item">
+                                <span class="legend-marker" style="background: #ef4444;"></span>
+                                <span>High Priority Zone</span>
+                            </div>
+                            <div class="map-legend-item">
+                                <span class="legend-marker" style="background: #f59e0b;"></span>
+                                <span>Medium Priority Zone</span>
+                            </div>
+                            <div class="map-legend-item">
+                                <span class="legend-marker" style="background: #22c55e;"></span>
+                                <span>Relief Distributed</span>
+                            </div>
+                            <div class="map-legend-item">
+                                <span class="legend-marker" style="background: #6366f1;"></span>
+                                <span>Merchant Location</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="map-stats">
+                        <div class="map-stat-card">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <div>
+                                <span class="map-stat-value" id="map-zones">5</span>
+                                <span class="map-stat-label">Active Zones</span>
+                            </div>
+                        </div>
+                        <div class="map-stat-card">
+                            <i class="fas fa-users"></i>
+                            <div>
+                                <span class="map-stat-value" id="map-beneficiaries">0</span>
+                                <span class="map-stat-label">Beneficiaries</span>
+                            </div>
+                        </div>
+                        <div class="map-stat-card">
+                            <i class="fas fa-store"></i>
+                            <div>
+                                <span class="map-stat-value" id="map-merchants">0</span>
+                                <span class="map-stat-label">Merchants</span>
+                            </div>
+                        </div>
+                        <div class="map-stat-card">
+                            <i class="fas fa-coins"></i>
+                            <div>
+                                <span class="map-stat-value" id="map-distributed">0</span>
+                                <span class="map-stat-label">RUSD Distributed</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Donor Portal Page -->
+                <section id="page-donate" class="page">
+                    <div class="donate-header">
+                        <div class="donate-hero">
+                            <i class="fas fa-hand-holding-heart"></i>
+                            <h2>Support Disaster Relief</h2>
+                            <p>Your contribution directly helps disaster victims through transparent blockchain technology</p>
+                        </div>
+                    </div>
+                    
+                    <div class="donate-grid">
+                        <div class="card donate-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-donate"></i> Make a Donation</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="donation-amounts">
+                                    <button class="amount-btn" onclick="setDonationAmount(100)">100 RUSD</button>
+                                    <button class="amount-btn" onclick="setDonationAmount(500)">500 RUSD</button>
+                                    <button class="amount-btn" onclick="setDonationAmount(1000)">1000 RUSD</button>
+                                    <button class="amount-btn" onclick="setDonationAmount(5000)">5000 RUSD</button>
+                                </div>
+                                <div class="form-group">
+                                    <label>Custom Amount (ETH)</label>
+                                    <input type="number" id="donation-amount" placeholder="0.1" min="0.001" step="0.001">
+                                    <span class="input-hint">Donation will be converted to relief funds</span>
+                                </div>
+                                <div class="form-group">
+                                    <label>Your Message (Optional)</label>
+                                    <textarea id="donation-message" placeholder="Leave an encouraging message for beneficiaries..." rows="3"></textarea>
+                                </div>
+                                <button class="btn btn-primary btn-lg btn-block" onclick="makeDonation()">
+                                    <i class="fas fa-heart"></i> Donate Now
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card impact-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-chart-pie"></i> Your Impact</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="impact-stats">
+                                    <div class="impact-item">
+                                        <div class="impact-icon"><i class="fas fa-hand-holding-usd"></i></div>
+                                        <div class="impact-value" id="total-donations">0 ETH</div>
+                                        <div class="impact-label">Total Donations</div>
+                                    </div>
+                                    <div class="impact-item">
+                                        <div class="impact-icon"><i class="fas fa-users"></i></div>
+                                        <div class="impact-value" id="donors-count">0</div>
+                                        <div class="impact-label">Donors</div>
+                                    </div>
+                                    <div class="impact-item">
+                                        <div class="impact-icon"><i class="fas fa-user-check"></i></div>
+                                        <div class="impact-value" id="helped-count">0</div>
+                                        <div class="impact-label">People Helped</div>
+                                    </div>
+                                </div>
+                                <div class="impact-message">
+                                    <i class="fas fa-quote-left"></i>
+                                    <p>"100% of donations go directly to verified disaster victims. Zero intermediaries."</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card recent-donors">
+                        <div class="card-header">
+                            <h3><i class="fas fa-heart"></i> Recent Donors</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="donors-list" class="donors-list">
+                                <div class="donor-item">
+                                    <div class="donor-avatar"><i class="fas fa-user"></i></div>
+                                    <div class="donor-info">
+                                        <span class="donor-address">0x1234...5678</span>
+                                        <span class="donor-time">2 hours ago</span>
+                                    </div>
+                                    <div class="donor-amount">0.5 ETH</div>
+                                </div>
+                                <div class="donor-item">
+                                    <div class="donor-avatar"><i class="fas fa-user"></i></div>
+                                    <div class="donor-info">
+                                        <span class="donor-address">0xabcd...efgh</span>
+                                        <span class="donor-time">5 hours ago</span>
+                                    </div>
+                                    <div class="donor-amount">1.0 ETH</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div id="modal-qr" class="modal hidden">
+        <div class="modal-header">
+            <h3><i class="fas fa-qrcode"></i> Scan to Pay</h3>
+            <button class="modal-close" onclick="closeModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body qr-modal-body">
+            <div id="qr-code-container" class="qr-code-container"></div>
+            <div class="qr-details">
+                <p class="qr-merchant-name" id="qr-merchant-name">Merchant Name</p>
+                <p class="qr-address" id="qr-address">0x...</p>
+                <p class="qr-category" id="qr-category">Category</p>
+            </div>
+            <p class="qr-instruction">Scan this QR code with your mobile wallet to pay this merchant</p>
+        </div>
     </div>
 
     <!-- Modals -->
@@ -1026,6 +1247,10 @@
     </button>
 
     <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
+    <!-- QR Code Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <!-- Leaflet Map -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="config.js"></script>
     <script src="abi.js"></script>
     <script src="app.js"></script>

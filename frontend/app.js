@@ -352,7 +352,10 @@ function navigateTo(page) {
     
     // Show page
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById(`page-${page}`).classList.add('active');
+    const pageEl = document.getElementById(`page-${page}`);
+    if (pageEl) {
+        pageEl.classList.add('active');
+    }
     
     // Update header
     const titles = {
@@ -363,7 +366,9 @@ function navigateTo(page) {
         wallet: ['My Wallet', 'View your balance and transactions'],
         payment: ['Make Payment', 'Pay approved merchants'],
         transactions: ['Transactions', 'View all transaction history'],
-        audit: ['Audit Trail', 'Transparency and verification']
+        audit: ['Audit Trail', 'Transparency and verification'],
+        map: ['Relief Map', 'Geographic distribution of aid'],
+        donate: ['Donor Portal', 'Support disaster relief efforts']
     };
     
     document.getElementById('page-title').textContent = titles[page]?.[0] || page;
@@ -371,6 +376,19 @@ function navigateTo(page) {
     
     // Close mobile sidebar
     document.getElementById('sidebar').classList.remove('open');
+    
+    // Initialize map when visiting map page
+    if (page === 'map') {
+        setTimeout(() => {
+            initializeMap();
+            updateMapStats();
+        }, 100);
+    }
+    
+    // Load donor data when visiting donate page
+    if (page === 'donate') {
+        loadDonationHistory();
+    }
     
     // Refresh page-specific data
     refreshPageData(page);
@@ -395,6 +413,17 @@ async function refreshPageData(page) {
             break;
         case 'audit':
             await loadAuditData();
+            break;
+        case 'map':
+            initializeMap();
+            await updateMapStats();
+            break;
+        case 'donate':
+            loadDonationHistory();
+            break;
+        case 'dashboard':
+            await refreshData();
+            await getFundDistributionSummary();
             break;
     }
 }
@@ -583,6 +612,12 @@ async function loadBeneficiaries() {
 }
 
 async function addBeneficiary() {
+    // Role validation - only admin can add beneficiaries
+    if (currentRole !== 'admin') {
+        showToast('Only admin can add beneficiaries', 'error');
+        return;
+    }
+    
     const address = document.getElementById('new-beneficiary-address').value.trim();
     
     // Validate address - must be a proper Ethereum address
@@ -679,6 +714,11 @@ async function loadMerchants() {
                             ${getCategoryName(category)}
                         </span>
                     </div>
+                    <div class="merchant-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="showMerchantQR('${address}', '${name}', ${category})">
+                            <i class="fas fa-qrcode"></i> QR Code
+                        </button>
+                    </div>
                 </div>
             `;
         }
@@ -692,6 +732,12 @@ async function loadMerchants() {
 }
 
 async function addMerchant() {
+    // Role validation - only admin can add merchants
+    if (currentRole !== 'admin') {
+        showToast('Only admin can add merchants', 'error');
+        return;
+    }
+    
     const address = document.getElementById('new-merchant-address').value.trim();
     const name = document.getElementById('new-merchant-name').value.trim();
     const category = document.querySelector('input[name="category"]:checked')?.value;
@@ -759,6 +805,12 @@ async function addMerchant() {
 let mintingHistory = [];
 
 async function mintTokens() {
+    // Role validation - only admin can mint tokens
+    if (currentRole !== 'admin') {
+        showToast('Only admin can mint tokens', 'error');
+        return;
+    }
+    
     const recipient = document.getElementById('mint-recipient').value.trim();
     const amount = document.getElementById('mint-amount').value;
     
@@ -781,6 +833,12 @@ async function mintTokens() {
     
     if (!amount || parseFloat(amount) <= 0) {
         showToast('Please enter a valid amount', 'error');
+        return;
+    }
+    
+    // Maximum mint validation (prevent unrealistic amounts)
+    if (parseFloat(amount) > 1000000) {
+        showToast('Maximum single mint is 1,000,000 RUSD', 'error');
         return;
     }
     
@@ -820,6 +878,13 @@ async function mintTokens() {
         closeModal();
         showSuccess(`${amount} RUSD minted to ${shortenAddress(recipient)}`);
         showConfetti();
+        
+        // Send emergency notification for fund distribution
+        sendEmergencyAlert(
+            '💰 Funds Distributed!', 
+            `${amount} RUSD sent to ${shortenAddress(recipient)}`, 
+            'success'
+        );
         
         document.getElementById('mint-recipient').value = '';
         document.getElementById('mint-amount').value = '';
@@ -1080,6 +1145,12 @@ function selectMerchantForPayment(address) {
 }
 
 async function makePayment() {
+    // Role validation - only beneficiaries can make payments
+    if (currentRole !== 'beneficiary') {
+        showToast('Only beneficiaries can make payments', 'error');
+        return;
+    }
+    
     if (!selectedMerchant) {
         showToast('Please select a merchant', 'error');
         return;
@@ -1571,7 +1642,7 @@ async function refreshAllViews() {
 // ============================================
 
 async function loadTransactions() {
-    const container = document.getElementById('transactions-list');
+    const container = document.getElementById('all-transactions');
     if (!container) return;
     
     try {
@@ -2114,6 +2185,17 @@ async function getFundDistributionSummary() {
         console.log('   Total Spent:', formatAmount(totalSpent), 'RUSD');
         console.log('   Total Remaining:', formatAmount(totalRemaining), 'RUSD');
         
+        // Update Fund Summary Panel in Dashboard
+        const fundTotalSupply = document.getElementById('fund-total-supply');
+        const fundDistributed = document.getElementById('fund-distributed');
+        const fundSpent = document.getElementById('fund-spent');
+        const fundRemaining = document.getElementById('fund-remaining');
+        
+        if (fundTotalSupply) fundTotalSupply.textContent = formatAmount(totalSupply) + ' RUSD';
+        if (fundDistributed) fundDistributed.textContent = formatAmount(totalDistributed) + ' RUSD';
+        if (fundSpent) fundSpent.textContent = formatAmount(totalSpent) + ' RUSD';
+        if (fundRemaining) fundRemaining.textContent = formatAmount(totalRemaining) + ' RUSD';
+        
         return {
             totalSupply: formatAmount(totalSupply),
             totalDistributed: formatAmount(totalDistributed),
@@ -2125,3 +2207,370 @@ async function getFundDistributionSummary() {
         return null;
     }
 }
+
+// ============================================
+// QR CODE PAYMENTS
+// ============================================
+
+function showMerchantQR(address, name, category) {
+    const container = document.getElementById('qr-code-container');
+    const merchantName = document.getElementById('qr-merchant-name');
+    const qrAddress = document.getElementById('qr-address');
+    const qrCategory = document.getElementById('qr-category');
+    
+    // Clear previous QR code
+    container.innerHTML = '';
+    
+    // Update details
+    if (merchantName) merchantName.textContent = name;
+    if (qrAddress) qrAddress.textContent = address;
+    if (qrCategory) qrCategory.textContent = getCategoryName(category);
+    
+    // Generate QR code with payment data
+    const paymentData = JSON.stringify({
+        type: 'relief-payment',
+        merchant: address,
+        name: name,
+        category: getCategoryName(category),
+        network: 'localhost:8545',
+        token: CONFIG.RELIEF_STABLECOIN
+    });
+    
+    // Use QRCode library
+    if (typeof QRCode !== 'undefined') {
+        QRCode.toCanvas(paymentData, { width: 200, margin: 2 }, (error, canvas) => {
+            if (error) {
+                console.error('QR Error:', error);
+                container.innerHTML = '<p>Error generating QR code</p>';
+            } else {
+                container.appendChild(canvas);
+            }
+        });
+    } else {
+        // Fallback: show text
+        container.innerHTML = `<div class="qr-fallback"><code>${address}</code></div>`;
+    }
+    
+    // Show modal
+    document.getElementById('modal-overlay').classList.remove('hidden');
+    document.getElementById('modal-qr').classList.remove('hidden');
+}
+
+// ============================================
+// EMERGENCY ALERT SYSTEM
+// ============================================
+
+let notificationsEnabled = false;
+
+async function requestNotificationPermission() {
+    if ('Notification' in window) {
+        const permission = await Notification.requestPermission();
+        notificationsEnabled = permission === 'granted';
+        return notificationsEnabled;
+    }
+    return false;
+}
+
+function sendEmergencyAlert(title, message, type = 'info') {
+    // Show toast
+    showToast(message, type);
+    
+    // Send browser notification if enabled
+    if (notificationsEnabled && 'Notification' in window) {
+        const notification = new Notification(title, {
+            body: message,
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            tag: 'relief-alert',
+            requireInteraction: type === 'emergency'
+        });
+        
+        notification.onclick = () => {
+            window.focus();
+            notification.close();
+        };
+    }
+    
+    // Play sound for emergency alerts
+    if (type === 'emergency') {
+        playAlertSound();
+    }
+}
+
+function playAlertSound() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        gainNode.gain.value = 0.3;
+        
+        oscillator.start();
+        setTimeout(() => oscillator.stop(), 200);
+    } catch (e) {
+        console.log('Audio alert not supported');
+    }
+}
+
+// ============================================
+// GEOGRAPHIC MAP (LEAFLET)
+// ============================================
+
+let reliefMap = null;
+let mapMarkers = [];
+
+function initializeMap() {
+    if (reliefMap) {
+        // If already initialized, just refresh
+        reliefMap.invalidateSize();
+        return;
+    }
+    
+    const mapContainer = document.getElementById('relief-map');
+    if (!mapContainer) {
+        console.log('Map container not found');
+        return;
+    }
+    
+    try {
+        // Initialize Leaflet map centered on India with fast loading
+        reliefMap = L.map('relief-map', {
+            preferCanvas: true,
+            zoomControl: true,
+            attributionControl: true
+        }).setView([20.5937, 78.9629], 5);
+        
+        // Add OpenStreetMap tiles with fast loading
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap',
+            maxZoom: 18,
+            minZoom: 3,
+            updateWhenZooming: false,
+            updateWhenIdle: true,
+            keepBuffer: 2
+        }).addTo(reliefMap);
+        
+        // Wait for tiles to load then add markers
+        setTimeout(() => {
+            addDisasterZones();
+            addMerchantMarkers();
+            reliefMap.invalidateSize();
+        }, 500);
+        
+    } catch (error) {
+        console.error('Map initialization error:', error);
+    }
+}
+
+function addDisasterZones() {
+    const disasterZones = [
+        { lat: 26.8467, lng: 80.9462, name: 'Lucknow Flood Zone', severity: 'high', beneficiaries: 150, distributed: 15000 },
+        { lat: 19.0760, lng: 72.8777, name: 'Mumbai Relief Center', severity: 'medium', beneficiaries: 200, distributed: 25000 },
+        { lat: 13.0827, lng: 80.2707, name: 'Chennai Cyclone Zone', severity: 'high', beneficiaries: 180, distributed: 20000 },
+        { lat: 22.5726, lng: 88.3639, name: 'Kolkata Distribution', severity: 'low', beneficiaries: 100, distributed: 12000 },
+        { lat: 28.6139, lng: 77.2090, name: 'Delhi Emergency Hub', severity: 'medium', beneficiaries: 120, distributed: 18000 }
+    ];
+    
+    const severityColors = {
+        high: '#ef4444',
+        medium: '#f59e0b',
+        low: '#22c55e'
+    };
+    
+    disasterZones.forEach(zone => {
+        const marker = L.circleMarker([zone.lat, zone.lng], {
+            radius: 15,
+            fillColor: severityColors[zone.severity],
+            color: '#fff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.7
+        }).addTo(reliefMap);
+        
+        marker.bindPopup(`
+            <div class="map-popup">
+                <h4>${zone.name}</h4>
+                <p><strong>Severity:</strong> ${zone.severity.toUpperCase()}</p>
+                <p><strong>Beneficiaries:</strong> ${zone.beneficiaries}</p>
+                <p><strong>Distributed:</strong> ${zone.distributed.toLocaleString()} RUSD</p>
+            </div>
+        `);
+        
+        mapMarkers.push(marker);
+    });
+}
+
+function addMerchantMarkers() {
+    const merchantLocations = [
+        { lat: 26.9, lng: 81.0, name: 'City Grocery Store', category: 'FOOD' },
+        { lat: 19.1, lng: 72.9, name: 'Community Pharmacy', category: 'MEDICAL' },
+        { lat: 13.1, lng: 80.3, name: 'Relief Housing Co', category: 'SHELTER' }
+    ];
+    
+    const merchantIcon = L.divIcon({
+        className: 'merchant-marker',
+        html: '<i class="fas fa-store"></i>',
+        iconSize: [30, 30]
+    });
+    
+    merchantLocations.forEach(loc => {
+        const marker = L.marker([loc.lat, loc.lng], { icon: merchantIcon }).addTo(reliefMap);
+        marker.bindPopup(`
+            <div class="map-popup">
+                <h4>${loc.name}</h4>
+                <p><strong>Category:</strong> ${loc.category}</p>
+                <p>Approved Relief Merchant</p>
+            </div>
+        `);
+        mapMarkers.push(marker);
+    });
+}
+
+async function updateMapStats() {
+    try {
+        const beneficiaryCount = await fundManager.totalBeneficiaries();
+        const merchantCount = await fundManager.totalMerchants();
+        const totalSupply = await stablecoin.totalSupply();
+        
+        const mapBeneficiaries = document.getElementById('map-beneficiaries');
+        const mapMerchants = document.getElementById('map-merchants');
+        const mapDistributed = document.getElementById('map-distributed');
+        
+        if (mapBeneficiaries) mapBeneficiaries.textContent = beneficiaryCount.toString();
+        if (mapMerchants) mapMerchants.textContent = merchantCount.toString();
+        if (mapDistributed) mapDistributed.textContent = formatAmount(totalSupply);
+    } catch (error) {
+        console.error('Error updating map stats:', error);
+    }
+}
+
+// ============================================
+// DONOR PORTAL
+// ============================================
+
+let donationHistory = [];
+
+function setDonationAmount(amount) {
+    // Convert RUSD to approximate ETH (1 ETH = 1000 RUSD for demo)
+    const ethAmount = (amount / 1000).toFixed(3);
+    document.getElementById('donation-amount').value = ethAmount;
+    
+    // Highlight selected button
+    document.querySelectorAll('.amount-btn').forEach(btn => btn.classList.remove('selected'));
+    event.target.classList.add('selected');
+}
+
+async function makeDonation() {
+    const amountInput = document.getElementById('donation-amount');
+    const messageInput = document.getElementById('donation-message');
+    
+    const amount = parseFloat(amountInput.value);
+    const message = messageInput.value.trim();
+    
+    if (!amount || amount <= 0) {
+        showToast('Please enter a donation amount', 'error');
+        return;
+    }
+    
+    if (amount < 0.001) {
+        showToast('Minimum donation is 0.001 ETH', 'error');
+        return;
+    }
+    
+    showProcessing('Processing donation...');
+    
+    try {
+        // Send ETH donation to contract owner (admin)
+        const owner = await stablecoin.owner();
+        const tx = await signer.sendTransaction({
+            to: owner,
+            value: ethers.parseEther(amount.toString())
+        });
+        
+        console.log('💝 Donation TX:', tx.hash);
+        await tx.wait();
+        
+        // Record donation
+        const donation = {
+            from: currentAccount,
+            amount: amount,
+            message: message,
+            timestamp: new Date().toISOString(),
+            txHash: tx.hash
+        };
+        
+        donationHistory.unshift(donation);
+        saveDonationHistory();
+        
+        closeModal();
+        showSuccess(`Thank you! Your donation of ${amount} ETH has been received!`);
+        showConfetti();
+        
+        // Send alert
+        sendEmergencyAlert('🎉 New Donation!', `${shortenAddress(currentAccount)} donated ${amount} ETH`, 'success');
+        
+        // Clear form
+        amountInput.value = '';
+        messageInput.value = '';
+        
+        // Update display
+        updateDonorDisplay();
+        
+    } catch (error) {
+        closeModal();
+        console.error('Donation error:', error);
+        showError('Donation failed: ' + (error.reason || error.message));
+    }
+}
+
+function saveDonationHistory() {
+    localStorage.setItem('reliefusd_donations', JSON.stringify(donationHistory));
+}
+
+function loadDonationHistory() {
+    const stored = localStorage.getItem('reliefusd_donations');
+    if (stored) {
+        donationHistory = JSON.parse(stored);
+    }
+    updateDonorDisplay();
+}
+
+function updateDonorDisplay() {
+    const donorsList = document.getElementById('donors-list');
+    const totalDonations = document.getElementById('total-donations');
+    const donorsCount = document.getElementById('donors-count');
+    const helpedCount = document.getElementById('helped-count');
+    
+    if (donorsList && donationHistory.length > 0) {
+        donorsList.innerHTML = donationHistory.slice(0, 10).map(d => `
+            <div class="donor-item">
+                <div class="donor-avatar"><i class="fas fa-heart"></i></div>
+                <div class="donor-info">
+                    <span class="donor-address">${shortenAddress(d.from)}</span>
+                    <span class="donor-time">${formatTime(new Date(d.timestamp))}</span>
+                </div>
+                <div class="donor-amount">${d.amount} ETH</div>
+            </div>
+        `).join('');
+    }
+    
+    // Calculate totals
+    const total = donationHistory.reduce((sum, d) => sum + d.amount, 0);
+    const uniqueDonors = new Set(donationHistory.map(d => d.from)).size;
+    
+    if (totalDonations) totalDonations.textContent = total.toFixed(3) + ' ETH';
+    if (donorsCount) donorsCount.textContent = uniqueDonors.toString();
+    if (helpedCount) helpedCount.textContent = (uniqueDonors * 5).toString(); // Estimate
+}
+
+// Initialize donations and notifications on load
+document.addEventListener('DOMContentLoaded', () => {
+    loadDonationHistory();
+    // Request notification permission after a delay
+    setTimeout(requestNotificationPermission, 3000);
+});

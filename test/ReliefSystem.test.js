@@ -45,8 +45,9 @@ describe("Disaster Relief Stablecoin System", function () {
         fundManager = await ReliefFundManager.deploy();
         await fundManager.waitForDeployment();
 
-        // Link contracts
+        // Link contracts BIDIRECTIONALLY - CRITICAL for proper operation
         await stablecoin.setFundManager(await fundManager.getAddress());
+        await fundManager.setStablecoin(await stablecoin.getAddress());
     });
 
     describe("ReliefStablecoin - Basic Functionality", function () {
@@ -301,19 +302,38 @@ describe("Disaster Relief Stablecoin System", function () {
             // Initial count should be 0
             expect(await fundManager.getTransactionCount()).to.equal(0);
             
-            // After recording a transfer
-            await fundManager.recordTransfer(
-                beneficiary1.address,
-                merchantFood.address,
-                ethers.parseEther("100")
-            );
+            // Setup: Add beneficiary and merchant first (check if already exists)
+            if (!(await fundManager.isBeneficiary(beneficiary1.address))) {
+                await fundManager.addBeneficiary(beneficiary1.address);
+            }
+            if (!(await fundManager.isMerchant(merchantFood.address))) {
+                await fundManager.addMerchant(merchantFood.address, CATEGORY.FOOD, "Test Food Store");
+            }
+            
+            // Mint tokens to beneficiary
+            await stablecoin.mint(beneficiary1.address, ethers.parseEther("1000"));
+            
+            // Execute a transfer (this will automatically call recordTransfer via the contract)
+            await stablecoin.connect(beneficiary1).transfer(merchantFood.address, ethers.parseEther("100"));
             
             expect(await fundManager.getTransactionCount()).to.equal(1);
         });
 
         it("Should store transaction details", async function () {
+            // Setup: Add beneficiary and merchant first (check if already exists)
+            if (!(await fundManager.isBeneficiary(beneficiary1.address))) {
+                await fundManager.addBeneficiary(beneficiary1.address);
+            }
+            if (!(await fundManager.isMerchant(merchantFood.address))) {
+                await fundManager.addMerchant(merchantFood.address, CATEGORY.FOOD, "Test Food Store");
+            }
+            
+            // Mint tokens to beneficiary
+            await stablecoin.mint(beneficiary1.address, ethers.parseEther("1000"));
+            
+            // Execute a transfer
             const amount = ethers.parseEther("100");
-            await fundManager.recordTransfer(beneficiary1.address, merchantFood.address, amount);
+            await stablecoin.connect(beneficiary1).transfer(merchantFood.address, amount);
             
             const tx = await fundManager.getTransaction(0);
             expect(tx.from).to.equal(beneficiary1.address);
@@ -324,10 +344,21 @@ describe("Disaster Relief Stablecoin System", function () {
         });
 
         it("Should get recent transactions", async function () {
-            // Record multiple transactions
-            await fundManager.recordTransfer(beneficiary1.address, merchantFood.address, ethers.parseEther("100"));
-            await fundManager.recordTransfer(beneficiary1.address, merchantFood.address, ethers.parseEther("200"));
-            await fundManager.recordTransfer(beneficiary1.address, merchantFood.address, ethers.parseEther("300"));
+            // Setup: Add beneficiary and merchant first (check if already exists)
+            if (!(await fundManager.isBeneficiary(beneficiary1.address))) {
+                await fundManager.addBeneficiary(beneficiary1.address);
+            }
+            if (!(await fundManager.isMerchant(merchantFood.address))) {
+                await fundManager.addMerchant(merchantFood.address, CATEGORY.FOOD, "Test Food Store");
+            }
+            
+            // Mint tokens to beneficiary
+            await stablecoin.mint(beneficiary1.address, ethers.parseEther("1000"));
+            
+            // Record multiple transactions through actual transfers
+            await stablecoin.connect(beneficiary1).transfer(merchantFood.address, ethers.parseEther("100"));
+            await stablecoin.connect(beneficiary1).transfer(merchantFood.address, ethers.parseEther("200"));
+            await stablecoin.connect(beneficiary1).transfer(merchantFood.address, ethers.parseEther("300"));
             
             const recent = await fundManager.getRecentTransactions(2);
             expect(recent.length).to.equal(2);
