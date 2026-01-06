@@ -25,14 +25,24 @@ let isConnecting = false; // Flag to prevent multiple connection attempts
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Simulate loading
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 1500));
     
-    // Hide loading screen, show login
-    document.getElementById('loading-screen').classList.add('hidden');
-    document.getElementById('login-screen').classList.remove('hidden');
-    
-    // Setup event listeners
+    // Setup event listeners first
     setupEventListeners();
+    
+    // Check if we should show view-only mode (Skip Login)
+    const urlParams = new URLSearchParams(window.location.search);
+    const viewOnly = urlParams.get('view') === 'public' || sessionStorage.getItem('viewOnlyMode') === 'true';
+    
+    if (viewOnly) {
+        // Skip login, go directly to public view
+        document.getElementById('loading-screen').classList.add('hidden');
+        enterViewOnlyMode();
+    } else {
+        // Show login screen
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+    }
     
     // Clear any previous connection preferences on page load
     sessionStorage.removeItem('rememberWalletConnection');
@@ -61,6 +71,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 function setupEventListeners() {
     // Connect button
     document.getElementById('connect-btn').addEventListener('click', connectWallet);
+    
+    // View as Guest button (add if doesn't exist)
+    const viewAsGuestBtn = document.getElementById('view-as-guest-btn');
+    if (viewAsGuestBtn) {
+        viewAsGuestBtn.addEventListener('click', enterViewOnlyMode);
+    }
     
     // Role selection
     document.querySelectorAll('.role-card').forEach(card => {
@@ -323,13 +339,14 @@ function logout() {
     // Clear both session and local storage to forget connection completely
     sessionStorage.removeItem('rememberWalletConnection');
     localStorage.removeItem('rememberWalletConnection');
+    sessionStorage.removeItem('viewOnlyMode');
     
     document.getElementById('app-screen').classList.add('hidden');
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('role-selection').classList.add('hidden');
     document.getElementById('connect-btn').classList.remove('hidden');
     document.getElementById('connect-btn').disabled = false;
-    document.getElementById('connect-btn').innerHTML = '<i class="fab fa-ethereum"></i> Connect MetaMask';
+    document.getElementById('connect-btn').innerHTML = 'Connect MetaMask';
     
     // Reset Remember Me checkbox
     const rememberCheckbox = document.getElementById('remember-connection');
@@ -338,6 +355,70 @@ function logout() {
     }
     
     updateWalletStatus(false);
+}
+
+// ============================================
+// VIEW-ONLY MODE (FOR PUBLIC VIEWERS)
+// ============================================
+
+async function enterViewOnlyMode() {
+    sessionStorage.setItem('viewOnlyMode', 'true');
+    currentRole = 'viewer';
+    
+    // Initialize read-only provider (no signer needed)
+    try {
+        provider = new ethers.JsonRpcProvider(CONFIG.EXPLORER.includes('localhost') 
+            ? 'http://localhost:8545' 
+            : 'https://ethereum-sepolia-rpc.publicnode.com');
+        
+        stablecoin = new ethers.Contract(CONFIG.RELIEF_STABLECOIN, STABLECOIN_ABI, provider);
+        fundManager = new ethers.Contract(CONFIG.RELIEF_FUND_MANAGER, FUND_MANAGER_ABI, provider);
+        
+        // Hide login, show app
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-screen').classList.remove('hidden');
+        
+        // Update UI for view-only mode
+        document.getElementById('user-address').textContent = 'Public Viewer';
+        document.getElementById('user-role').textContent = 'View Only';
+        document.getElementById('wallet-icon').innerHTML = '👁️';
+        
+        // Add banner notification
+        const banner = document.createElement('div');
+        banner.className = 'view-only-banner';
+        banner.innerHTML = `
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 20px; text-align: center; font-size: 14px; border-radius: 8px; margin: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                👁️ <strong>Public View Mode</strong> - You're viewing public data. <a href="#" onclick="document.getElementById('app-screen').classList.add('hidden'); document.getElementById('login-screen').classList.remove('hidden'); sessionStorage.removeItem('viewOnlyMode');" style="color: #ffd700; text-decoration: underline;">Connect wallet</a> to interact.
+            </div>
+        `;
+        document.querySelector('.main-content').insertBefore(banner, document.querySelector('.main-content').firstChild);
+        
+        // Show public-friendly navigation
+        showPublicNavigation();
+        
+        // Start on dashboard
+        navigateTo('dashboard');
+        
+        showToast('👁️ Viewing in public mode - Connect wallet to interact', 'info');
+        
+    } catch (error) {
+        console.error('View-only mode error:', error);
+        showToast('Unable to load public data. Please try again.', 'error');
+    }
+}
+
+function showPublicNavigation() {
+    // Hide admin-only pages, show public pages
+    const publicPages = ['dashboard', 'beneficiaries', 'merchants', 'transactions', 'audit', 'map', 'donate'];
+    
+    document.querySelectorAll('.nav-item').forEach(item => {
+        const page = item.dataset.page;
+        if (publicPages.includes(page)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
 }
 
 // ============================================
@@ -395,7 +476,11 @@ function navigateTo(page) {
 }
 
 async function refreshPageData(page) {
+    // Allow data loading even without wallet connection (read-only)
     switch (page) {
+        case 'dashboard':
+            await loadDashboardData();
+            break;
         case 'beneficiaries':
             await loadBeneficiaries();
             break;
@@ -612,6 +697,12 @@ async function loadBeneficiaries() {
 }
 
 async function addBeneficiary() {
+    // Check for view-only mode
+    if (currentRole === 'viewer' || !currentAccount) {
+        showToast('Connect your wallet to add beneficiaries', 'warning');
+        return;
+    }
+    
     // Role validation - only admin can add beneficiaries
     if (currentRole !== 'admin') {
         showToast('Only admin can add beneficiaries', 'error');
@@ -732,6 +823,12 @@ async function loadMerchants() {
 }
 
 async function addMerchant() {
+    // Check for view-only mode
+    if (currentRole === 'viewer' || !currentAccount) {
+        showToast('Connect your wallet to add merchants', 'warning');
+        return;
+    }
+    
     // Role validation - only admin can add merchants
     if (currentRole !== 'admin') {
         showToast('Only admin can add merchants', 'error');
@@ -805,6 +902,12 @@ async function addMerchant() {
 let mintingHistory = [];
 
 async function mintTokens() {
+    // Check for view-only mode
+    if (currentRole === 'viewer' || !currentAccount) {
+        showToast('Connect your wallet to mint tokens', 'warning');
+        return;
+    }
+    
     // Role validation - only admin can mint tokens
     if (currentRole !== 'admin') {
         showToast('Only admin can mint tokens', 'error');
@@ -1145,6 +1248,12 @@ function selectMerchantForPayment(address) {
 }
 
 async function makePayment() {
+    // Check for view-only mode
+    if (currentRole === 'viewer' || !currentAccount) {
+        showToast('Connect your wallet to make payments', 'warning');
+        return;
+    }
+    
     // Role validation - only beneficiaries can make payments
     if (currentRole !== 'beneficiary') {
         showToast('Only beneficiaries can make payments', 'error');
