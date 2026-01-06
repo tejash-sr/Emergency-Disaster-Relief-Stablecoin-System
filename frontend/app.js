@@ -367,9 +367,12 @@ async function enterViewOnlyMode() {
     
     // Initialize read-only provider (no signer needed)
     try {
-        provider = new ethers.JsonRpcProvider(CONFIG.EXPLORER.includes('localhost') 
+        // Determine RPC URL based on network
+        const rpcUrl = CONFIG.NETWORK === 'localhost' 
             ? 'http://localhost:8545' 
-            : 'https://ethereum-sepolia-rpc.publicnode.com');
+            : 'https://ethereum-sepolia-rpc.publicnode.com';
+        
+        provider = new ethers.JsonRpcProvider(rpcUrl);
         
         stablecoin = new ethers.Contract(CONFIG.RELIEF_STABLECOIN, STABLECOIN_ABI, provider);
         fundManager = new ethers.Contract(CONFIG.RELIEF_FUND_MANAGER, FUND_MANAGER_ABI, provider);
@@ -477,9 +480,15 @@ function navigateTo(page) {
 
 async function refreshPageData(page) {
     // Allow data loading even without wallet connection (read-only)
+    // Skip if contracts not initialized (view-only mode might still be loading)
+    if (!stablecoin || !fundManager) {
+        return;
+    }
+    
     switch (page) {
         case 'dashboard':
-            await loadDashboardData();
+            await refreshData();
+            await getFundDistributionSummary();
             break;
         case 'beneficiaries':
             await loadBeneficiaries();
@@ -532,9 +541,13 @@ async function refreshData() {
         document.getElementById('stat-supply').textContent = formatAmount(totalSupply) + ' RUSD';
         document.getElementById('stat-transactions').textContent = txCount.toString();
         
-        // Update balance in header
-        const balance = await stablecoin.balanceOf(currentAccount);
-        document.getElementById('header-balance').textContent = formatAmount(balance) + ' RUSD';
+        // Update balance in header (only if connected)
+        if (currentAccount) {
+            const balance = await stablecoin.balanceOf(currentAccount);
+            document.getElementById('header-balance').textContent = formatAmount(balance) + ' RUSD';
+        } else {
+            document.getElementById('header-balance').textContent = '-- RUSD';
+        }
         
         // Check system status
         const paused = await stablecoin.paused();
