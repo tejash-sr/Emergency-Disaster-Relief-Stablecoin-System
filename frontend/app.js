@@ -24,6 +24,17 @@ let isConnecting = false; // Flag to prevent multiple connection attempts
 // ============================================
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Check if guest view is requested
+    const urlParams = new URLSearchParams(window.location.search);
+    const isGuestView = urlParams.get('view') === 'guest';
+    const guestRole = urlParams.get('role');
+    
+    if (isGuestView && guestRole) {
+        // Enter guest mode immediately
+        await enterGuestMode(guestRole);
+        return;
+    }
+    
     // Simulate loading
     await new Promise(resolve => setTimeout(resolve, 1500));
     
@@ -61,12 +72,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 function setupEventListeners() {
     // Connect button
     document.getElementById('connect-btn').addEventListener('click', connectWallet);
-    
-    // View as Guest button (add if doesn't exist)
-    const viewAsGuestBtn = document.getElementById('view-as-guest-btn');
-    if (viewAsGuestBtn) {
-        viewAsGuestBtn.addEventListener('click', enterViewOnlyMode);
-    }
     
     // Role selection
     document.querySelectorAll('.role-card').forEach(card => {
@@ -345,123 +350,6 @@ function logout() {
     }
     
     updateWalletStatus(false);
-}
-
-// ============================================
-// VIEW-ONLY MODE (FOR PUBLIC VIEWERS)
-// ============================================
-
-async function enterViewOnlyMode() {
-    console.log('🔍 Entering view-only mode...');
-    sessionStorage.setItem('viewOnlyMode', 'true');
-    currentRole = 'viewer';
-    
-    // Initialize read-only provider (no signer needed)
-    try {
-        // Determine RPC URL based on network
-        const rpcUrl = CONFIG.NETWORK === 'localhost' 
-            ? 'http://localhost:8545' 
-            : 'https://ethereum-sepolia-rpc.publicnode.com';
-        
-        console.log('📡 Connecting to RPC:', rpcUrl);
-        provider = new ethers.JsonRpcProvider(rpcUrl);
-        
-        // Test connection first
-        try {
-            const network = await provider.getNetwork();
-            console.log('✅ Connected to network:', network.chainId);
-        } catch (connError) {
-            console.error('❌ Cannot connect to blockchain:', connError);
-            if (CONFIG.NETWORK === 'localhost') {
-                showToast('⚠️ Cannot connect to localhost:8545. Please start Hardhat node first: npx hardhat node', 'error');
-            } else {
-                showToast('⚠️ Cannot connect to Sepolia network. Check your internet connection.', 'error');
-            }
-            return;
-        }
-        
-        console.log('📄 Initializing contracts...');
-        console.log('Stablecoin:', CONFIG.RELIEF_STABLECOIN);
-        console.log('FundManager:', CONFIG.RELIEF_FUND_MANAGER);
-        
-        // Check if ABIs are loaded
-        if (typeof STABLECOIN_ABI === 'undefined' || typeof FUND_MANAGER_ABI === 'undefined') {
-            console.error('❌ ABIs not loaded!');
-            showToast('Contract ABIs not loaded. Please refresh the page.', 'error');
-            return;
-        }
-        
-        stablecoin = new ethers.Contract(CONFIG.RELIEF_STABLECOIN, STABLECOIN_ABI, provider);
-        fundManager = new ethers.Contract(CONFIG.RELIEF_FUND_MANAGER, FUND_MANAGER_ABI, provider);
-        
-        // Test contract calls
-        try {
-            const supply = await stablecoin.totalSupply();
-            console.log('✅ Contracts working! Total supply:', ethers.formatEther(supply));
-        } catch (contractError) {
-            console.error('❌ Contract call failed:', contractError);
-            showToast('Contracts not deployed on this network. Deploy contracts first.', 'error');
-            return;
-        }
-        
-        // Hide login, show app
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('app-screen').classList.remove('hidden');
-        
-        // Update UI for view-only mode (with safety checks)
-        const userAddress = document.getElementById('user-address');
-        const userRole = document.getElementById('user-role');
-        const walletIcon = document.getElementById('wallet-icon');
-        
-        if (userAddress) userAddress.textContent = 'Public Viewer';
-        if (userRole) userRole.textContent = 'View Only';
-        if (walletIcon) walletIcon.innerHTML = '👁️';
-        
-        // Add banner notification
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent && mainContent.firstChild) {
-            const banner = document.createElement('div');
-            banner.className = 'view-only-banner';
-            banner.innerHTML = `
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 20px; text-align: center; font-size: 14px; border-radius: 8px; margin: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    👁️ <strong>Public View Mode</strong> - You're viewing public data. <a href="#" onclick="location.reload();" style="color: #ffd700; text-decoration: underline;">Connect wallet</a> to interact.
-                </div>
-            `;
-            mainContent.insertBefore(banner, mainContent.firstChild);
-        }
-        
-        // Show public-friendly navigation
-        showPublicNavigation();
-        
-        // Start on dashboard
-        console.log('📊 Loading dashboard...');
-        navigateTo('dashboard');
-        
-        showToast('👁️ Viewing in public mode - Connect wallet to interact', 'info');
-        
-    } catch (error) {
-        console.error('View-only mode error:', error);
-        showToast('Unable to load public data: ' + error.message, 'error');
-        
-        // Show login screen again
-        document.getElementById('app-screen').classList.add('hidden');
-        document.getElementById('login-screen').classList.remove('hidden');
-        sessionStorage.removeItem('viewOnlyMode');
-    }
-}
-
-function showPublicNavigation() {
-    // Hide admin-only pages, show public pages
-    const publicPages = ['dashboard', 'beneficiaries', 'merchants', 'transactions', 'audit', 'map', 'donate'];
-    
-    document.querySelectorAll('.nav-item').forEach(item => {
-        const page = item.dataset.page;
-        if (publicPages.includes(page)) {
-            item.style.display = 'flex';
-        } else {
-            item.style.display = 'none';
-        }
-    });
 }
 
 // ============================================
@@ -750,12 +638,6 @@ async function loadBeneficiaries() {
 }
 
 async function addBeneficiary() {
-    // Check for view-only mode
-    if (currentRole === 'viewer' || !currentAccount) {
-        showToast('Connect your wallet to add beneficiaries', 'warning');
-        return;
-    }
-    
     // Role validation - only admin can add beneficiaries
     if (currentRole !== 'admin') {
         showToast('Only admin can add beneficiaries', 'error');
@@ -876,12 +758,6 @@ async function loadMerchants() {
 }
 
 async function addMerchant() {
-    // Check for view-only mode
-    if (currentRole === 'viewer' || !currentAccount) {
-        showToast('Connect your wallet to add merchants', 'warning');
-        return;
-    }
-    
     // Role validation - only admin can add merchants
     if (currentRole !== 'admin') {
         showToast('Only admin can add merchants', 'error');
@@ -955,12 +831,6 @@ async function addMerchant() {
 let mintingHistory = [];
 
 async function mintTokens() {
-    // Check for view-only mode
-    if (currentRole === 'viewer' || !currentAccount) {
-        showToast('Connect your wallet to mint tokens', 'warning');
-        return;
-    }
-    
     // Role validation - only admin can mint tokens
     if (currentRole !== 'admin') {
         showToast('Only admin can mint tokens', 'error');
@@ -1301,12 +1171,6 @@ function selectMerchantForPayment(address) {
 }
 
 async function makePayment() {
-    // Check for view-only mode
-    if (currentRole === 'viewer' || !currentAccount) {
-        showToast('Connect your wallet to make payments', 'warning');
-        return;
-    }
-    
     // Role validation - only beneficiaries can make payments
     if (currentRole !== 'beneficiary') {
         showToast('Only beneficiaries can make payments', 'error');
@@ -2724,6 +2588,236 @@ function updateDonorDisplay() {
     // Calculate totals
     const total = donationHistory.reduce((sum, d) => sum + d.amount, 0);
     const uniqueDonors = new Set(donationHistory.map(d => d.from)).size;
+    
+    if (totalDonations) totalDonations.textContent = `${total.toFixed(2)} ETH`;
+    if (donorsCount) donorsCount.textContent = uniqueDonors;
+    if (helpedCount) helpedCount.textContent = beneficiaries.length;
+}
+
+// ============================================
+// GUEST MODE - VIEW ONLY ACCESS
+// ============================================
+
+async function enterGuestMode(role) {
+    console.log('Entering guest mode as:', role);
+    
+    // Hide loading and login screens
+    document.getElementById('loading-screen').classList.add('hidden');
+    document.getElementById('login-screen').classList.add('hidden');
+    
+    // Show app screen
+    document.getElementById('app-screen').classList.remove('hidden');
+    
+    // Set guest mode flag
+    window.isGuestMode = true;
+    window.guestRole = role;
+    
+    // Disable all interactive elements
+    disableAllInteractions();
+    
+    // Show appropriate interface based on role
+    if (role === 'admin') {
+        showAdminGuestView();
+    } else if (role === 'beneficiary') {
+        showBeneficiaryGuestView();
+    } else if (role === 'public') {
+        showPublicGuestView();
+    }
+}
+
+function disableAllInteractions() {
+    // Disable all buttons except navigation
+    setTimeout(() => {
+        const buttons = document.querySelectorAll('button:not(.nav-item):not(.menu-toggle):not([data-page])');
+        buttons.forEach(btn => {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            btn.title = 'Action disabled in guest view';
+        });
+        
+        // Disable all inputs
+        const inputs = document.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.disabled = true;
+            input.style.opacity = '0.7';
+            input.style.cursor = 'not-allowed';
+        });
+        
+        // Add guest mode banner
+        const header = document.querySelector('.app-header');
+        if (header && !document.querySelector('.guest-banner')) {
+            const banner = document.createElement('div');
+            banner.className = 'guest-banner';
+            banner.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 20px; text-align: center; font-weight: 600; font-size: 12px; z-index: 10000; box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);';
+            banner.innerHTML = `<i class="fas fa-eye"></i> <strong>GUEST VIEW (READ ONLY)</strong> - Previewing ${window.guestRole} interface • <a href="index.html" style="color: #ffd700; text-decoration: underline;">Go to Live App</a>`;
+            document.body.insertBefore(banner, document.body.firstChild);
+            document.querySelector('.app-screen').style.marginTop = '40px';
+        }
+    }, 100);
+}
+
+function showAdminGuestView() {
+    // Set mock data
+    currentRole = 'administrator';
+    isAdmin = true;
+    currentAccount = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+    
+    // Update header
+    document.querySelector('.user-role').textContent = 'Administrator';
+    document.querySelector('.user-address').textContent = shortenAddress(currentAccount);
+    document.querySelector('.header-balance span').textContent = '1000.00 RUSD';
+    
+    // Show admin navigation
+    document.querySelectorAll('[data-role="admin"]').forEach(el => el.style.display = 'block');
+    
+    // Navigate to dashboard
+    navigateTo('dashboard');
+    
+    // Populate with mock data
+    setTimeout(() => {
+        populateMockAdminData();
+    }, 200);
+}
+
+function showBeneficiaryGuestView() {
+    // Set mock data
+    currentRole = 'beneficiary';
+    isBeneficiary = true;
+    currentAccount = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
+    
+    // Update header
+    document.querySelector('.user-role').textContent = 'Beneficiary';
+    document.querySelector('.user-address').textContent = shortenAddress(currentAccount);
+    document.querySelector('.header-balance span').textContent = '500.00 RUSD';
+    
+    // Show beneficiary navigation
+    document.querySelectorAll('[data-role="admin"]').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('[data-role="beneficiary"]').forEach(el => el.style.display = 'block');
+    
+    // Navigate to wallet page
+    navigateTo('wallet');
+    
+    // Populate with mock data
+    setTimeout(() => {
+        populateMockBeneficiaryData();
+    }, 200);
+}
+
+function showPublicGuestView() {
+    // Set mock data
+    currentRole = 'public';
+    currentAccount = '0x0000000000000000000000000000000000000000';
+    
+    // Update header
+    document.querySelector('.user-role').textContent = 'Public Viewer';
+    document.querySelector('.user-address').textContent = 'Read Only Access';
+    document.querySelector('.header-balance').style.display = 'none';
+    
+    // Show only public navigation
+    document.querySelectorAll('[data-role="admin"]').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('[data-role="beneficiary"]').forEach(el => el.style.display = 'none');
+    
+    // Navigate to audit page
+    navigateTo('audit');
+    
+    // Populate with mock data
+    setTimeout(() => {
+        populateMockPublicData();
+    }, 200);
+}
+
+function populateMockAdminData() {
+    // Stats
+    document.getElementById('total-beneficiaries').textContent = '2';
+    document.getElementById('total-merchants').textContent = '5';
+    document.getElementById('total-supply').textContent = '1,000.00';
+    document.getElementById('total-transactions').textContent = '3';
+    
+    // Recent activity
+    const activityList = document.getElementById('activity-list');
+    if (activityList) {
+        activityList.innerHTML = `
+            <div class="activity-item">
+                <div class="activity-icon mint">
+                    <i class="fas fa-plus"></i>
+                </div>
+                <div class="activity-info">
+                    <div class="activity-title">Tokens Minted</div>
+                    <div class="activity-details">500 RUSD → 0x7099...C8</div>
+                    <div class="activity-time">3 hours ago</div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function populateMockBeneficiaryData() {
+    // Wallet balance
+    const balanceAmount = document.querySelector('.balance-amount');
+    if (balanceAmount) {
+        balanceAmount.innerHTML = '500.00 <span class="currency">RUSD</span>';
+    }
+    
+    // Transaction history
+    const txList = document.querySelector('.transactions-card .card-content');
+    if (txList) {
+        txList.innerHTML = `
+            <div class="transaction-item">
+                <div class="tx-icon received">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+                <div class="tx-info">
+                    <div class="tx-addresses">From: <span>0xf39F...2266</span></div>
+                    <div class="tx-time">3 hours ago</div>
+                </div>
+                <div class="tx-amount">
+                    <div class="tx-amount-value received">+500.00 RUSD</div>
+                    <span class="category-badge shelter">SHELTER</span>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function populateMockPublicData() {
+    // Audit trail
+    const auditList = document.getElementById('audit-list');
+    if (auditList) {
+        auditList.innerHTML = `
+            <div class="audit-item">
+                <div class="audit-icon mint">
+                    <i class="fas fa-plus"></i>
+                </div>
+                <div class="audit-info">
+                    <div class="audit-title">Tokens Minted</div>
+                    <div class="audit-details">
+                        <span class="audit-from">By: 0xf39F...2266</span>
+                        <span class="audit-arrow">→</span>
+                        <span class="audit-to">To: 0x7099...C8</span>
+                    </div>
+                    <div class="audit-meta">
+                        <span class="audit-amount">500.00 RUSD</span>
+                        <span class="audit-time">3 hours ago</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Stats
+    if (document.getElementById('total-beneficiaries')) {
+        document.getElementById('total-beneficiaries').textContent = '2';
+    }
+    if (document.getElementById('total-merchants')) {
+        document.getElementById('total-merchants').textContent = '5';
+    }
+    if (document.getElementById('total-supply')) {
+        document.getElementById('total-supply').textContent = '1,000.00';
+    }
+    if (document.getElementById('total-transactions')) {
+        document.getElementById('total-transactions').textContent = '3';
+    }
     
     if (totalDonations) totalDonations.textContent = total.toFixed(3) + ' ETH';
     if (donorsCount) donorsCount.textContent = uniqueDonors.toString();

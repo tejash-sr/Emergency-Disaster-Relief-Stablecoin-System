@@ -86,12 +86,28 @@
                         Connect MetaMask
                     </button>
 
-                    <div style="text-align: center; margin-top: 20px;">
-                        <button id="view-as-guest-btn" class="guest-btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: #ffffff; padding: 14px 32px; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.3s; font-family: 'Inter', sans-serif; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);">
-                            <span style="font-size: 18px;">👁️</span>
-                            <span>View as Guest (Read Only)</span>
-                        </button>
-                        <p style="color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 10px; font-weight: 500;">Browse public data without connecting a wallet</p>
+                    <div style="margin-top: 30px; text-align: center;">
+                        <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;">View without connecting:</p>
+                        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                            <a href="?role=admin&view=guest" style="text-decoration: none;">
+                                <button style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: #ffffff; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.3s; font-family: 'Inter', sans-serif; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-user-shield" style="font-size: 11px;"></i>
+                                    <span>Admin</span>
+                                </button>
+                            </a>
+                            <a href="?role=beneficiary&view=guest" style="text-decoration: none;">
+                                <button style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: #ffffff; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.3s; font-family: 'Inter', sans-serif; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-user" style="font-size: 11px;"></i>
+                                    <span>Beneficiary</span>
+                                </button>
+                            </a>
+                            <a href="?role=public&view=guest" style="text-decoration: none;">
+                                <button style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: #ffffff; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.3s; font-family: 'Inter', sans-serif; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-eye" style="font-size: 11px;"></i>
+                                    <span>Public</span>
+                                </button>
+                            </a>
+                        </div>
                     </div>
 
                     <div id="role-selection" class="role-selection hidden">
