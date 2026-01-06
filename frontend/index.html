@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReliefUSD | Transparent Disaster Relief Fund</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loader-content">
+            <div class="logo-animation">
+                <i class="fas fa-hand-holding-heart"></i>
+            </div>
+            <h1>Relief<span>USD</span></h1>
+            <p>Transparent Disaster Relief System</p>
+            <div class="loader-bar">
+                <div class="loader-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen hidden">
+        <div class="login-container">
+            <div class="login-left">
+                <div class="login-branding">
+                    <div class="brand-logo">
+                        <i class="fas fa-hand-holding-heart"></i>
+                    </div>
+                    <h1>Relief<span>USD</span></h1>
+                    <p class="tagline">"Every rupee reaches those who need it"</p>
+                </div>
+                <div class="features-list">
+                    <div class="feature-item">
+                        <i class="fas fa-shield-alt"></i>
+                        <div>
+                            <h4>Transparent</h4>
+                            <p>Every transaction is publicly auditable on blockchain</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-bolt"></i>
+                        <div>
+                            <h4>Instant</h4>
+                            <p>Funds reach beneficiaries in seconds, not weeks</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-lock"></i>
+                        <div>
+                            <h4>Secure</h4>
+                            <p>Spending restrictions prevent fund misuse</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="login-right">
+                <div class="login-card">
+                    <h2>Welcome Back</h2>
+                    <p class="login-subtitle">Connect your wallet to continue</p>
+                    
+                    <div id="wallet-status" class="wallet-status">
+                        <div class="status-icon disconnected">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <span>No wallet connected</span>
+                    </div>
+
+                    <div class="remember-connection">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="remember-connection">
+                            <span class="checkmark"></span>
+                            Remember my connection
+                        </label>
+                        <span class="remember-hint">Uncheck to forget connection after closing browser</span>
+                    </div>
+
+                    <button id="connect-btn" class="connect-btn">
+                        <i class="fab fa-ethereum"></i>
+                        Connect MetaMask
+                    </button>
+
+                    <div id="role-selection" class="role-selection hidden">
+                        <h3>Select Your Role</h3>
+                        <div class="role-cards">
+                            <div class="role-card" id="role-admin" data-role="admin">
+                                <div class="role-icon admin">
+                                    <i class="fas fa-user-shield"></i>
+                                </div>
+                                <h4>Administrator</h4>
+                                <p>Manage beneficiaries, merchants, and fund distribution</p>
+                                <span class="role-badge">Requires Admin Wallet</span>
+                            </div>
+                            <div class="role-card" id="role-beneficiary" data-role="beneficiary">
+                                <div class="role-icon beneficiary">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <h4>Beneficiary</h4>
+                                <p>View balance and make approved purchases</p>
+                                <span class="role-badge">Registered Users</span>
+                            </div>
+                            <div class="role-card" id="role-public" data-role="public">
+                                <div class="role-icon public">
+                                    <i class="fas fa-eye"></i>
+                                </div>
+                                <h4>Public Viewer</h4>
+                                <p>View transparency dashboard and audit trail</p>
+                                <span class="role-badge">Open Access</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="network-info">
+                        <div class="network-badge" id="network-badge">
+                            <span class="network-dot"></span>
+                            <span id="network-name">Not Connected</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app-screen" class="app-screen hidden">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i class="fas fa-hand-holding-heart"></i>
+                    <span>Relief<span class="accent">USD</span></span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <span class="nav-label">MAIN</span>
+                    <a href="#" class="nav-item active" data-page="dashboard">
+                        <i class="fas fa-th-large"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+
+                <!-- Admin Only -->
+                <div class="nav-section admin-only">
+                    <span class="nav-label">ADMINISTRATION</span>
+                    <a href="#" class="nav-item" data-page="beneficiaries">
+                        <i class="fas fa-users"></i>
+                        <span>Beneficiaries</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="merchants">
+                        <i class="fas fa-store"></i>
+                        <span>Merchants</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="mint">
+                        <i class="fas fa-coins"></i>
+                        <span>Mint Tokens</span>
+                    </a>
+                </div>
+
+                <!-- Beneficiary Only -->
+                <div class="nav-section beneficiary-only">
+                    <span class="nav-label">MY ACCOUNT</span>
+                    <a href="#" class="nav-item" data-page="wallet">
+                        <i class="fas fa-wallet"></i>
+                        <span>My Wallet</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="payment">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Make Payment</span>
+                    </a>
+                </div>
+
+                <!-- All Users -->
+                <div class="nav-section">
+                    <span class="nav-label">TRANSPARENCY</span>
+                    <a href="#" class="nav-item" data-page="transactions">
+                        <i class="fas fa-history"></i>
+                        <span>Transactions</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="audit">
+                        <i class="fas fa-search"></i>
+                        <span>Audit Trail</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-details">
+                        <span class="user-role" id="user-role-display">Loading...</span>
+                        <span class="user-address" id="user-address-display">0x...</span>
+                    </div>
+                </div>
+                <button class="logout-btn" id="logout-btn" title="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-left">
+                    <button class="menu-toggle" id="menu-toggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-title">
+                        <h1 id="page-title">Dashboard</h1>
+                        <p id="page-subtitle">Overview of relief fund activities</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="live-indicator" id="live-indicator">
+                        <span class="live-dot"></span>
+                        <span>LIVE</span>
+                    </div>
+                    <div class="header-balance">
+                        <span class="balance-label">Your Balance</span>
+                        <span class="balance-amount" id="header-balance">0.00 RUSD</span>
+                    </div>
+                    <button class="theme-toggle" id="theme-toggle" title="Toggle theme">
+                        <i class="fas fa-moon" id="theme-icon"></i>
+                    </button>
+                    <div class="header-network">
+                        <span class="network-indicator connected"></span>
+                        <span id="header-network">Localhost</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="page-content">
+                <!-- Dashboard Page -->
+                <section id="page-dashboard" class="page active">
+                    <div class="stats-row">
+                        <div class="stat-card gradient-1">
+                            <div class="stat-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-beneficiaries">0</span>
+                                <span class="stat-label">Beneficiaries</span>
+                            </div>
+                        </div>
+                        <div class="stat-card gradient-2">
+                            <div class="stat-icon">
+                                <i class="fas fa-store"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-merchants">0</span>
+                                <span class="stat-label">Merchants</span>
+                            </div>
+                        </div>
+                        <div class="stat-card gradient-3">
+                            <div class="stat-icon">
+                                <i class="fas fa-coins"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-supply">0</span>
+                                <span class="stat-label">Total Supply</span>
+                            </div>
+                        </div>
+                        <div class="stat-card gradient-4">
+                            <div class="stat-icon">
+                                <i class="fas fa-exchange-alt"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-transactions">0</span>
+                                <span class="stat-label">Transactions</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Premium Charts Section -->
+                    <div class="charts-grid">
+                        <div class="chart-card glass-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title gradient-text"><i class="fas fa-chart-pie"></i> Fund Distribution</h3>
+                            </div>
+                            <div class="pie-chart-container">
+                                <div class="pie-chart" id="dashboard-pie-chart"></div>
+                                <div class="pie-center-text">
+                                    <span class="pie-center-amount" id="dashboard-total">0</span>
+                                    <span class="pie-center-label">RUSD</span>
+                                </div>
+                            </div>
+                            <div class="chart-legend">
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-food)"></span> Food</div>
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-medical)"></span> Medical</div>
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-shelter)"></span> Shelter</div>
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-education)"></span> Education</div>
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-utilities)"></span> Utilities</div>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title"><i class="fas fa-shield-alt"></i> System Health</h3>
+                            </div>
+                            <div class="system-health-grid">
+                                <div class="health-item">
+                                    <div class="health-icon success"><i class="fas fa-link"></i></div>
+                                    <div class="health-info">
+                                        <span class="health-label">Blockchain</span>
+                                        <span class="health-value">Connected</span>
+                                    </div>
+                                </div>
+                                <div class="health-item">
+                                    <div class="health-icon success"><i class="fas fa-file-contract"></i></div>
+                                    <div class="health-info">
+                                        <span class="health-label">Contracts</span>
+                                        <span class="health-value">Deployed</span>
+                                    </div>
+                                </div>
+                                <div class="health-item">
+                                    <div class="health-icon success"><i class="fas fa-lock"></i></div>
+                                    <div class="health-info">
+                                        <span class="health-label">Security</span>
+                                        <span class="health-value">Active</span>
+                                    </div>
+                                </div>
+                                <div class="health-item" id="system-paused-status">
+                                    <div class="health-icon success"><i class="fas fa-play"></i></div>
+                                    <div class="health-info">
+                                        <span class="health-label">Operations</span>
+                                        <span class="health-value">Running</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card recent-activity">
+                            <div class="card-header">
+                                <h3><i class="fas fa-clock"></i> Recent Activity</h3>
+                                <button class="btn-icon" onclick="refreshData()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="recent-activity-list" class="activity-list">
+                                    <div class="empty-state">
+                                        <i class="fas fa-inbox"></i>
+                                        <p>No recent activity</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card quick-actions admin-only">
+                            <div class="card-header">
+                                <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="action-grid">
+                                    <button class="action-btn" onclick="navigateTo('beneficiaries')">
+                                        <i class="fas fa-user-plus"></i>
+                                        <span>Add Beneficiary</span>
+                                    </button>
+                                    <button class="action-btn" onclick="navigateTo('merchants')">
+                                        <i class="fas fa-store"></i>
+                                        <span>Add Merchant</span>
+                                    </button>
+                                    <button class="action-btn" onclick="navigateTo('mint')">
+                                        <i class="fas fa-coins"></i>
+                                        <span>Mint Tokens</span>
+                                    </button>
+                                    <button class="action-btn danger" onclick="togglePause()">
+                                        <i class="fas fa-pause-circle" id="pause-icon"></i>
+                                        <span id="pause-text">Emergency Stop</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card system-status">
+                            <div class="card-header">
+                                <h3><i class="fas fa-heartbeat"></i> System Status</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="status-item">
+                                    <span class="status-label">System Status</span>
+                                    <span class="status-value active" id="system-status">
+                                        <i class="fas fa-check-circle"></i> Active
+                                    </span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Blockchain</span>
+                                    <span class="status-value" id="blockchain-status">Connected</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Contract</span>
+                                    <span class="status-value" id="contract-status">Deployed</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Beneficiaries Page (Admin) -->
+                <section id="page-beneficiaries" class="page">
+                    <div class="page-actions">
+                        <button class="btn btn-primary" onclick="openModal('add-beneficiary')">
+                            <i class="fas fa-plus"></i> Add Beneficiary
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-users"></i> Registered Beneficiaries</h3>
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" placeholder="Search beneficiaries..." id="search-beneficiaries">
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="beneficiaries-list" class="data-grid">
+                                <div class="empty-state">
+                                    <i class="fas fa-users"></i>
+                                    <p>No beneficiaries registered yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Merchants Page (Admin) -->
+                <section id="page-merchants" class="page">
+                    <div class="page-actions">
+                        <button class="btn btn-primary" onclick="openModal('add-merchant')">
+                            <i class="fas fa-plus"></i> Add Merchant
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-store"></i> Registered Merchants</h3>
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" placeholder="Search merchants..." id="search-merchants">
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="merchants-list" class="data-grid merchants-grid">
+                                <div class="empty-state">
+                                    <i class="fas fa-store"></i>
+                                    <p>No merchants registered yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Mint Page (Admin) -->
+                <section id="page-mint" class="page">
+                    <div class="mint-container">
+                        <div class="card mint-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-coins"></i> Mint Relief Tokens</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="mint-form">
+                                    <div class="form-group">
+                                        <label>Recipient Address</label>
+                                        <div class="input-with-icon">
+                                            <i class="fas fa-wallet"></i>
+                                            <input type="text" id="mint-recipient" placeholder="0x...">
+                                        </div>
+                                        <span class="input-hint">Must be a registered beneficiary</span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Amount (RUSD)</label>
+                                        <div class="input-with-icon">
+                                            <i class="fas fa-coins"></i>
+                                            <input type="number" id="mint-amount" placeholder="1000" min="1">
+                                        </div>
+                                        <span class="input-hint">Relief fund amount to distribute</span>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button class="btn btn-primary btn-lg" onclick="mintTokens()">
+                                            <i class="fas fa-paper-plane"></i> Mint & Distribute
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card mint-info">
+                            <div class="card-header">
+                                <h3><i class="fas fa-info-circle"></i> Minting Info</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="info-list">
+                                    <div class="info-item">
+                                        <i class="fas fa-check-circle success"></i>
+                                        <span>Only admins can mint tokens</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <i class="fas fa-check-circle success"></i>
+                                        <span>Tokens go directly to beneficiaries</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <i class="fas fa-check-circle success"></i>
+                                        <span>All mints are logged on-chain</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <i class="fas fa-check-circle success"></i>
+                                        <span>Distribution is recorded for balance tally</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Minting History Section -->
+                    <div class="card minting-history-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-history"></i> Minting History</h3>
+                            <button class="btn btn-secondary btn-sm" onclick="loadMintingHistory()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="minting-history-list" class="minting-history-list">
+                                <div class="empty-state">
+                                    <i class="fas fa-coins"></i>
+                                    <p>No minting history yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Wallet Page (Beneficiary) -->
+                <section id="page-wallet" class="page">
+                    <div class="wallet-overview">
+                        <div class="wallet-card">
+                            <div class="wallet-card-bg"></div>
+                            <div class="wallet-card-content">
+                                <div class="wallet-label">Available Balance</div>
+                                <div class="wallet-amount">
+                                    <span class="currency">RUSD</span>
+                                    <span class="amount" id="wallet-balance">0.00</span>
+                                </div>
+                                <div class="wallet-address" id="wallet-address-card">0x...</div>
+                                <div class="wallet-chip">
+                                    <i class="fas fa-shield-alt"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="wallet-stats">
+                            <div class="wallet-stat">
+                                <div class="wallet-stat-icon received">
+                                    <i class="fas fa-arrow-down"></i>
+                                </div>
+                                <div>
+                                    <span class="stat-value" id="total-received">0.00 RUSD</span>
+                                    <span class="stat-label">Total Received</span>
+                                </div>
+                            </div>
+                            <div class="wallet-stat">
+                                <div class="wallet-stat-icon spent">
+                                    <i class="fas fa-arrow-up"></i>
+                                </div>
+                                <div>
+                                    <span class="stat-value" id="total-spent">0.00 RUSD</span>
+                                    <span class="stat-label">Total Spent</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-history"></i> My Transactions</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="my-transactions" class="transaction-list">
+                                <div class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>No transactions yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Payment Page (Beneficiary) -->
+                <section id="page-payment" class="page">
+                    <div class="payment-container">
+                        <div class="card payment-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-credit-card"></i> Make Payment</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="payment-form">
+                                    <div class="form-group">
+                                        <label>Select Merchant</label>
+                                        <div class="merchant-selector" id="merchant-selector">
+                                            <div class="empty-state small">
+                                                <i class="fas fa-store"></i>
+                                                <p>Loading merchants...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Amount (RUSD)</label>
+                                        <div class="input-with-icon">
+                                            <i class="fas fa-coins"></i>
+                                            <input type="number" id="payment-amount" placeholder="Enter amount" min="1">
+                                        </div>
+                                        <span class="input-hint">Your balance: <strong id="payment-balance">0.00</strong> RUSD</span>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button class="btn btn-success btn-lg" onclick="makePayment()">
+                                            <i class="fas fa-check"></i> Confirm Payment
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card payment-info">
+                            <div class="card-header">
+                                <h3><i class="fas fa-info-circle"></i> Spending Rules</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="rule-item allowed">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Pay approved merchants</span>
+                                </div>
+                                <div class="rule-item blocked">
+                                    <i class="fas fa-times-circle"></i>
+                                    <span>Transfer to random wallets</span>
+                                </div>
+                                <div class="rule-item blocked">
+                                    <i class="fas fa-times-circle"></i>
+                                    <span>Send to other beneficiaries</span>
+                                </div>
+                                <div class="rule-item blocked">
+                                    <i class="fas fa-times-circle"></i>
+                                    <span>Cash out or exchange</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Transactions Page -->
+                <section id="page-transactions" class="page">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-history"></i> Transaction History</h3>
+                            <button class="btn btn-secondary" onclick="refreshTransactions()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="all-transactions" class="transaction-list">
+                                <div class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>No transactions yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Audit Page -->
+                <section id="page-audit" class="page">
+                    <div class="audit-header">
+                        <div class="audit-stats">
+                            <div class="audit-stat">
+                                <i class="fas fa-exchange-alt"></i>
+                                <div>
+                                    <span class="value" id="audit-total-tx">0</span>
+                                    <span class="label">Total Transactions</span>
+                                </div>
+                            </div>
+                            <div class="audit-stat">
+                                <i class="fas fa-coins"></i>
+                                <div>
+                                    <span class="value" id="audit-total-volume">0 RUSD</span>
+                                    <span class="label">Total Volume</span>
+                                </div>
+                            </div>
+                            <div class="audit-stat">
+                                <i class="fas fa-users"></i>
+                                <div>
+                                    <span class="value" id="audit-total-beneficiaries">0</span>
+                                    <span class="label">Beneficiaries Helped</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="audit-actions">
+                            <button class="download-btn" onclick="downloadAuditCSV()">
+                                <i class="fas fa-download"></i>
+                                Download CSV
+                            </button>
+                            <button class="download-btn" onclick="downloadAuditPDF()">
+                                <i class="fas fa-file-pdf"></i>
+                                Export PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Charts Section -->
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title"><i class="fas fa-chart-pie"></i> Spending by Category</h3>
+                            </div>
+                            <div class="pie-chart-container">
+                                <div class="pie-chart" id="category-pie-chart"></div>
+                                <div class="pie-center-text">
+                                    <span class="pie-center-amount" id="total-spent">0</span>
+                                    <span class="pie-center-label">RUSD Total</span>
+                                </div>
+                            </div>
+                            <div class="chart-legend" id="category-legend">
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-food)"></span> Food</div>
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-medical)"></span> Medical</div>
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-shelter)"></span> Shelter</div>
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-education)"></span> Education</div>
+                                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-utilities)"></span> Utilities</div>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title"><i class="fas fa-chart-bar"></i> Weekly Distribution</h3>
+                            </div>
+                            <div class="bar-chart" id="weekly-bar-chart">
+                                <div class="bar-item">
+                                    <div class="bar" style="height: 60%; background: var(--primary);">
+                                        <span class="bar-value">600</span>
+                                    </div>
+                                    <span class="bar-label">Mon</span>
+                                </div>
+                                <div class="bar-item">
+                                    <div class="bar" style="height: 80%; background: var(--primary);">
+                                        <span class="bar-value">800</span>
+                                    </div>
+                                    <span class="bar-label">Tue</span>
+                                </div>
+                                <div class="bar-item">
+                                    <div class="bar" style="height: 45%; background: var(--primary);">
+                                        <span class="bar-value">450</span>
+                                    </div>
+                                    <span class="bar-label">Wed</span>
+                                </div>
+                                <div class="bar-item">
+                                    <div class="bar" style="height: 70%; background: var(--primary);">
+                                        <span class="bar-value">700</span>
+                                    </div>
+                                    <span class="bar-label">Thu</span>
+                                </div>
+                                <div class="bar-item">
+                                    <div class="bar" style="height: 90%; background: var(--primary);">
+                                        <span class="bar-value">900</span>
+                                    </div>
+                                    <span class="bar-label">Fri</span>
+                                </div>
+                                <div class="bar-item">
+                                    <div class="bar" style="height: 55%; background: var(--primary);">
+                                        <span class="bar-value">550</span>
+                                    </div>
+                                    <span class="bar-label">Sat</span>
+                                </div>
+                                <div class="bar-item">
+                                    <div class="bar" style="height: 40%; background: var(--primary);">
+                                        <span class="bar-value">400</span>
+                                    </div>
+                                    <span class="bar-label">Sun</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Token Journey Section -->
+                    <div class="card journey-container">
+                        <div class="card-header">
+                            <h3><i class="fas fa-route"></i> Aid Traceback - Token Journey</h3>
+                            <div class="journey-search">
+                                <input type="text" id="journey-tx-hash" placeholder="Enter Transaction Hash to trace...">
+                                <button class="btn btn-primary" onclick="traceTokenJourney()">
+                                    <i class="fas fa-search"></i> Trace
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="journey-timeline" class="journey-timeline">
+                                <div class="journey-step">
+                                    <div class="journey-icon mint"><i class="fas fa-coins"></i></div>
+                                    <div class="journey-content">
+                                        <div class="journey-header">
+                                            <span class="journey-type">Token Minted</span>
+                                            <span class="journey-time">Start of Journey</span>
+                                        </div>
+                                        <p>Relief funds created and allocated to beneficiary</p>
+                                        <div class="journey-details">
+                                            <div class="journey-detail-item">
+                                                <span class="journey-detail-label">From</span>
+                                                <span class="journey-detail-value">Treasury</span>
+                                            </div>
+                                            <div class="journey-detail-item">
+                                                <span class="journey-detail-label">Amount</span>
+                                                <span class="journey-detail-value">1,000 RUSD</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="journey-step">
+                                    <div class="journey-icon transfer"><i class="fas fa-arrow-right"></i></div>
+                                    <div class="journey-content">
+                                        <div class="journey-header">
+                                            <span class="journey-type">Allocated to Beneficiary</span>
+                                            <span class="journey-time">Pending</span>
+                                        </div>
+                                        <p>Connect wallet and trace a transaction to see full journey</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Review Panel -->
+                    <div class="review-panel">
+                        <div class="review-header">
+                            <h3 class="review-title"><i class="fas fa-clipboard-check"></i> Transaction Review Panel</h3>
+                            <div class="review-actions">
+                                <select id="review-filter" class="form-control" onchange="filterReviewTransactions()">
+                                    <option value="all">All Transactions</option>
+                                    <option value="mints">Mints Only</option>
+                                    <option value="transfers">Transfers Only</option>
+                                    <option value="payments">Payments Only</option>
+                                </select>
+                            </div>
+                        </div>
+                        <table class="review-table">
+                            <thead>
+                                <tr>
+                                    <th>Tx Hash</th>
+                                    <th>Type</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Amount</th>
+                                    <th>Category</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="review-table-body">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; padding: 40px;">
+                                        <i class="fas fa-inbox" style="font-size: 2rem; color: var(--text-muted);"></i>
+                                        <p style="color: var(--text-muted); margin-top: 10px;">No transactions to review</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-link"></i> Contract Addresses</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="contract-info">
+                                <div class="contract-item">
+                                    <span class="contract-label">ReliefStablecoin (RUSD)</span>
+                                    <div class="contract-address">
+                                        <code id="contract-rusd">Loading...</code>
+                                        <button class="btn-copy" onclick="copyAddress('rusd')">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="contract-item">
+                                    <span class="contract-label">ReliefFundManager</span>
+                                    <div class="contract-address">
+                                        <code id="contract-manager">Loading...</code>
+                                        <button class="btn-copy" onclick="copyAddress('manager')">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="transparency-note">
+                        <i class="fas fa-shield-alt"></i>
+                        <div>
+                            <h4>"Every transaction is publicly auditable"</h4>
+                            <p>All data is stored on-chain and can be independently verified by anyone.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <!-- Add Beneficiary Modal -->
+        <div id="modal-add-beneficiary" class="modal hidden">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-plus"></i> Add Beneficiary</h3>
+                <button class="modal-close" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Beneficiary Address</label>
+                    <input type="text" id="new-beneficiary-address" placeholder="0x...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="addBeneficiary()">
+                    <i class="fas fa-plus"></i> Add Beneficiary
+                </button>
+            </div>
+        </div>
+
+        <!-- Add Merchant Modal -->
+        <div id="modal-add-merchant" class="modal hidden">
+            <div class="modal-header">
+                <h3><i class="fas fa-store"></i> Add Merchant</h3>
+                <button class="modal-close" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Merchant Address</label>
+                    <input type="text" id="new-merchant-address" placeholder="0x...">
+                </div>
+                <div class="form-group">
+                    <label>Merchant Name</label>
+                    <input type="text" id="new-merchant-name" placeholder="City Grocery Store">
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <div class="category-selector">
+                        <label class="category-option">
+                            <input type="radio" name="category" value="0" checked>
+                            <span class="category-badge food"><i class="fas fa-apple-alt"></i> FOOD</span>
+                        </label>
+                        <label class="category-option">
+                            <input type="radio" name="category" value="1">
+                            <span class="category-badge medical"><i class="fas fa-medkit"></i> MEDICAL</span>
+                        </label>
+                        <label class="category-option">
+                            <input type="radio" name="category" value="2">
+                            <span class="category-badge shelter"><i class="fas fa-home"></i> SHELTER</span>
+                        </label>
+                        <label class="category-option">
+                            <input type="radio" name="category" value="3">
+                            <span class="category-badge education"><i class="fas fa-book"></i> EDUCATION</span>
+                        </label>
+                        <label class="category-option">
+                            <input type="radio" name="category" value="4">
+                            <span class="category-badge utilities"><i class="fas fa-bolt"></i> UTILITIES</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="addMerchant()">
+                    <i class="fas fa-plus"></i> Add Merchant
+                </button>
+            </div>
+        </div>
+
+        <!-- Transaction Processing Modal -->
+        <div id="modal-processing" class="modal modal-sm hidden">
+            <div class="modal-body processing">
+                <div class="processing-spinner"></div>
+                <h3>Processing Transaction</h3>
+                <p id="processing-message">Please confirm in MetaMask...</p>
+            </div>
+        </div>
+
+        <!-- Success Modal -->
+        <div id="modal-success" class="modal modal-sm hidden">
+            <div class="modal-body success-modal">
+                <div class="success-icon">
+                    <i class="fas fa-check"></i>
+                </div>
+                <h3>Success!</h3>
+                <p id="success-message">Transaction completed successfully</p>
+                <button class="btn btn-primary" onclick="closeModal()">Done</button>
+            </div>
+        </div>
+
+        <!-- Error Modal -->
+        <div id="modal-error" class="modal modal-sm hidden">
+            <div class="modal-body error-modal">
+                <div class="error-icon">
+                    <i class="fas fa-times"></i>
+                </div>
+                <h3>Error</h3>
+                <p id="error-message">Something went wrong</p>
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Floating Action Button -->
+    <button class="fab" id="fab-refresh" onclick="refreshData()" title="Refresh Data">
+        <i class="fas fa-sync-alt"></i>
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
+    <script src="config.js"></script>
+    <script src="abi.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disaster Relief Fund System | EBIS 2.0</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🏥</span>
+                    <h1>Relief<span class="accent">USD</span></h1>
+                </div>
+                <div class="wallet-section">
+                    <div id="network-badge" class="network-badge">
+                        <span class="dot"></span>
+                        <span id="network-name">Not Connected</span>
+                    </div>
+                    <button id="connect-wallet" class="btn btn-primary">
+                        <span class="wallet-icon">🔗</span>
+                        Connect Wallet
+                    </button>
+                    <div id="wallet-info" class="wallet-info hidden">
+                        <span id="wallet-address">0x...</span>
+                        <span id="wallet-balance">0 RUSD</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="tabs-nav">
+        <div class="container">
+            <div class="tabs">
+                <button class="tab active" data-tab="admin">
+                    <span class="tab-icon">👨‍💼</span>
+                    Admin Dashboard
+                </button>
+                <button class="tab" data-tab="beneficiary">
+                    <span class="tab-icon">👤</span>
+                    Beneficiary
+                </button>
+                <button class="tab" data-tab="transparency">
+                    <span class="tab-icon">🔍</span>
+                    Transparency
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            
+            <!-- Admin Panel -->
+            <section id="admin-panel" class="panel active">
+                <div class="panel-header">
+                    <h2>Admin Control Panel</h2>
+                    <p class="subtitle">Manage beneficiaries, merchants, and fund distribution</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value" id="stat-beneficiaries">0</div>
+                        <div class="stat-label">Beneficiaries</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🏪</div>
+                        <div class="stat-value" id="stat-merchants">0</div>
+                        <div class="stat-label">Merchants</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-value" id="stat-total-supply">0</div>
+                        <div class="stat-label">Total RUSD Supply</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-value" id="stat-transactions">0</div>
+                        <div class="stat-label">Transactions</div>
+                    </div>
+                </div>
+
+                <div class="admin-grid">
+                    <!-- Mint Tokens -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>💵 Mint Relief Tokens</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Recipient Address</label>
+                                <input type="text" id="mint-address" placeholder="0x...">
+                            </div>
+                            <div class="form-group">
+                                <label>Amount (RUSD)</label>
+                                <input type="number" id="mint-amount" placeholder="1000">
+                            </div>
+                            <button class="btn btn-success" id="mint-btn">
+                                Mint Tokens
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Add Beneficiary -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>👤 Add Beneficiary</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Beneficiary Address</label>
+                                <input type="text" id="beneficiary-address" placeholder="0x...">
+                            </div>
+                            <button class="btn btn-primary" id="add-beneficiary-btn">
+                                Add Beneficiary
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Add Merchant -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🏪 Add Merchant</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Merchant Address</label>
+                                <input type="text" id="merchant-address" placeholder="0x...">
+                            </div>
+                            <div class="form-group">
+                                <label>Merchant Name</label>
+                                <input type="text" id="merchant-name" placeholder="City Grocery Store">
+                            </div>
+                            <div class="form-group">
+                                <label>Category</label>
+                                <select id="merchant-category">
+                                    <option value="0">🍎 FOOD</option>
+                                    <option value="1">💊 MEDICAL</option>
+                                    <option value="2">🏠 SHELTER</option>
+                                    <option value="3">📚 EDUCATION</option>
+                                    <option value="4">⚡ UTILITIES</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" id="add-merchant-btn">
+                                Add Merchant
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- System Controls -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>⚙️ System Controls</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="status-row">
+                                <span>System Status:</span>
+                                <span id="system-status" class="status-badge active">Active</span>
+                            </div>
+                            <div class="button-group">
+                                <button class="btn btn-warning" id="pause-btn">
+                                    ⏸️ Pause System
+                                </button>
+                                <button class="btn btn-success" id="unpause-btn">
+                                    ▶️ Resume System
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registered Lists -->
+                <div class="lists-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📋 Registered Beneficiaries</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="beneficiaries-list" class="data-list">
+                                <p class="empty-message">No beneficiaries registered</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📋 Registered Merchants</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="merchants-list" class="data-list">
+                                <p class="empty-message">No merchants registered</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Beneficiary Panel -->
+            <section id="beneficiary-panel" class="panel">
+                <div class="panel-header">
+                    <h2>Beneficiary Dashboard</h2>
+                    <p class="subtitle">View your balance and make approved purchases</p>
+                </div>
+
+                <div class="beneficiary-content">
+                    <!-- Balance Card -->
+                    <div class="balance-card">
+                        <div class="balance-header">
+                            <span>Available Balance</span>
+                            <span class="currency">RUSD</span>
+                        </div>
+                        <div class="balance-amount" id="user-balance">0.00</div>
+                        <div class="balance-footer">
+                            <span>Address: </span>
+                            <span id="user-address-display">Not connected</span>
+                        </div>
+                    </div>
+
+                    <!-- Transfer Section -->
+                    <div class="card transfer-card">
+                        <div class="card-header">
+                            <h3>💳 Make Payment</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Select Merchant</label>
+                                <select id="transfer-merchant">
+                                    <option value="">-- Select Approved Merchant --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Amount (RUSD)</label>
+                                <input type="number" id="transfer-amount" placeholder="100">
+                            </div>
+                            <button class="btn btn-success btn-block" id="transfer-btn">
+                                ✅ Confirm Payment
+                            </button>
+
+                            <div class="rules-info">
+                                <h4>📜 Spending Rules:</h4>
+                                <ul>
+                                    <li class="allowed">✅ Pay approved merchants</li>
+                                    <li class="blocked">❌ Transfer to random wallets</li>
+                                    <li class="blocked">❌ Send to other beneficiaries</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transaction History -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📜 My Transactions</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="user-transactions" class="transaction-list">
+                                <p class="empty-message">No transactions yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transparency Panel -->
+            <section id="transparency-panel" class="panel">
+                <div class="panel-header">
+                    <h2>Transparency Dashboard</h2>
+                    <p class="subtitle">"Every transaction is publicly auditable"</p>
+                </div>
+
+                <div class="transparency-content">
+                    <!-- Overall Stats -->
+                    <div class="transparency-stats">
+                        <div class="stat-card large">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-value" id="total-distributed">0</div>
+                            <div class="stat-label">Total RUSD Distributed</div>
+                        </div>
+                        <div class="stat-card large">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-value" id="total-tx-count">0</div>
+                            <div class="stat-label">Total Transactions</div>
+                        </div>
+                        <div class="stat-card large">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-value" id="total-beneficiaries">0</div>
+                            <div class="stat-label">Beneficiaries Helped</div>
+                        </div>
+                    </div>
+
+                    <!-- Category Breakdown -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📊 Spending by Category</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="category-bars">
+                                <div class="category-item">
+                                    <span class="category-label">🍎 FOOD</span>
+                                    <div class="progress-bar">
+                                        <div class="progress food" id="progress-food" style="width: 0%"></div>
+                                    </div>
+                                    <span class="category-value" id="category-food">0 RUSD</span>
+                                </div>
+                                <div class="category-item">
+                                    <span class="category-label">💊 MEDICAL</span>
+                                    <div class="progress-bar">
+                                        <div class="progress medical" id="progress-medical" style="width: 0%"></div>
+                                    </div>
+                                    <span class="category-value" id="category-medical">0 RUSD</span>
+                                </div>
+                                <div class="category-item">
+                                    <span class="category-label">🏠 SHELTER</span>
+                                    <div class="progress-bar">
+                                        <div class="progress shelter" id="progress-shelter" style="width: 0%"></div>
+                                    </div>
+                                    <span class="category-value" id="category-shelter">0 RUSD</span>
+                                </div>
+                                <div class="category-item">
+                                    <span class="category-label">📚 EDUCATION</span>
+                                    <div class="progress-bar">
+                                        <div class="progress education" id="progress-education" style="width: 0%"></div>
+                                    </div>
+                                    <span class="category-value" id="category-education">0 RUSD</span>
+                                </div>
+                                <div class="category-item">
+                                    <span class="category-label">⚡ UTILITIES</span>
+                                    <div class="progress-bar">
+                                        <div class="progress utilities" id="progress-utilities" style="width: 0%"></div>
+                                    </div>
+                                    <span class="category-value" id="category-utilities">0 RUSD</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Full Transaction History -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📜 Complete Transaction History</h3>
+                            <button class="btn btn-secondary btn-sm" id="refresh-history">
+                                🔄 Refresh
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>From</th>
+                                            <th>To</th>
+                                            <th>Amount</th>
+                                            <th>Category</th>
+                                            <th>Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="transaction-history-table">
+                                        <tr>
+                                            <td colspan="6" class="empty-message">No transactions recorded</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contract Info -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🔗 Smart Contract Addresses</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="contract-info">
+                                <div class="contract-row">
+                                    <span class="contract-label">ReliefStablecoin (RUSD):</span>
+                                    <code id="contract-stablecoin">Loading...</code>
+                                </div>
+                                <div class="contract-row">
+                                    <span class="contract-label">ReliefFundManager:</span>
+                                    <code id="contract-manager">Loading...</code>
+                                </div>
+                            </div>
+                            <p class="verification-note">
+                                ✅ All contracts are verified and auditable on the blockchain
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>🏥 Disaster Relief Stablecoin System | IIT EBIS 2.0 Hackathon</p>
+            <p class="tagline">"Every rupee reaches those who need it"</p>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-message"></span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
+    <script src="config.js"></script>
+    <script src="abi.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

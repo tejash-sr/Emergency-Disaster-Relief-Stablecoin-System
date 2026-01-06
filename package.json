@@ -1,0 +1,35 @@
+{
+  "name": "disaster-relief-stablecoin-system",
+  "version": "1.0.0",
+  "description": "Transparent Emergency & Disaster Relief Stablecoin Distribution System - IIT EBIS 2.0 Hackathon",
+  "main": "index.js",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "node": "npx hardhat node",
+    "deploy:local": "npx hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia": "npx hardhat run scripts/deploy.js --network sepolia",
+    "frontend": "npx serve frontend -l 3000"
+  },
+  "keywords": [
+    "blockchain",
+    "disaster-relief",
+    "stablecoin",
+    "ethereum",
+    "solidity",
+    "hackathon"
+  ],
+  "author": "EBIS 2.0 Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0",
+    "serve": "^14.2.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0"
+  },
+  "overrides": {
+    "cookie": "^0.7.0"
+  }
+}
