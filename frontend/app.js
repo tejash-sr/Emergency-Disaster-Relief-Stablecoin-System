@@ -28,41 +28,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const isGuestView = urlParams.get('view') === 'guest';
     const guestRole = urlParams.get('role');
-    
+
     if (isGuestView && guestRole) {
         // Enter guest mode immediately
         await enterGuestMode(guestRole);
         return;
     }
-    
+
     // Simulate loading
     await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
     // Setup event listeners first
     setupEventListeners();
-    
+
     // ALWAYS show login screen first (user must click button to view as guest)
     document.getElementById('loading-screen').classList.add('hidden');
     document.getElementById('login-screen').classList.remove('hidden');
-    
+
     // Clear any previous connection preferences on page load
     sessionStorage.removeItem('rememberWalletConnection');
-    
+
     // Check if MetaMask is available
     if (typeof window.ethereum !== 'undefined') {
         console.log('MetaMask detected');
-        
+
         // NEVER auto-connect - user must explicitly click "Connect MetaMask"
         // Only auto-connect if user explicitly enabled "Remember Me" AND localStorage has the flag
         const rememberPermanently = localStorage.getItem('rememberWalletConnection') === 'true';
-        
+
         if (rememberPermanently) {
             const accounts = await window.ethereum.request({ method: 'eth_accounts' });
             if (accounts.length > 0) {
                 await connectWallet();
             }
         }
-        
+
         // Listen for account changes
         window.ethereum.on('accountsChanged', handleAccountsChanged);
         window.ethereum.on('chainChanged', () => window.location.reload());
@@ -72,15 +72,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 function setupEventListeners() {
     // Connect button
     document.getElementById('connect-btn').addEventListener('click', connectWallet);
-    
+
     // Role selection
     document.querySelectorAll('.role-card').forEach(card => {
         card.addEventListener('click', () => selectRole(card.dataset.role));
     });
-    
+
     // Logout button
     document.getElementById('logout-btn').addEventListener('click', logout);
-    
+
     // Navigation
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', (e) => {
@@ -88,12 +88,12 @@ function setupEventListeners() {
             navigateTo(item.dataset.page);
         });
     });
-    
+
     // Mobile menu toggle
     document.getElementById('menu-toggle').addEventListener('click', () => {
         document.getElementById('sidebar').classList.toggle('open');
     });
-    
+
     // Close sidebar on page click (mobile)
     document.querySelector('.main-content').addEventListener('click', () => {
         document.getElementById('sidebar').classList.remove('open');
@@ -110,23 +110,23 @@ async function connectWallet() {
         window.open('https://metamask.io/download/', '_blank');
         return;
     }
-    
+
     // Prevent multiple simultaneous connection attempts
     if (isConnecting) {
         console.log('Connection already in progress...');
         return;
     }
-    
+
     isConnecting = true;
     const connectBtn = document.getElementById('connect-btn');
     connectBtn.disabled = true;
     connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
-    
+
     try {
         // Request account access
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         currentAccount = accounts[0];
-        
+
         // Handle "Remember Me" checkbox
         const rememberCheckbox = document.getElementById('remember-connection');
         if (rememberCheckbox && rememberCheckbox.checked) {
@@ -138,25 +138,25 @@ async function connectWallet() {
             localStorage.removeItem('rememberWalletConnection');
             sessionStorage.setItem('rememberWalletConnection', 'true');
         }
-        
+
         // Setup provider and signer
         provider = new ethers.BrowserProvider(window.ethereum);
         signer = await provider.getSigner();
-        
+
         // Initialize contracts
         stablecoin = new ethers.Contract(CONFIG.RELIEF_STABLECOIN, STABLECOIN_ABI, signer);
         fundManager = new ethers.Contract(CONFIG.RELIEF_FUND_MANAGER, FUND_MANAGER_ABI, signer);
-        
+
         // Update UI
         updateWalletStatus(true);
         await checkUserRole();
-        
+
         // Show role selection
         document.getElementById('role-selection').classList.remove('hidden');
         connectBtn.classList.add('hidden');
-        
+
         isConnecting = false; // Reset flag on success
-        
+
     } catch (error) {
         console.error('Connection error:', error);
         showToast('Failed to connect wallet: ' + error.message, 'error');
@@ -177,7 +177,7 @@ function handleAccountsChanged(accounts) {
 function updateWalletStatus(connected) {
     const statusDiv = document.getElementById('wallet-status');
     const networkBadge = document.getElementById('network-badge');
-    
+
     if (connected) {
         statusDiv.innerHTML = `
             <div class="status-icon connected">
@@ -204,25 +204,25 @@ async function checkUserRole() {
         console.log('🔍 Checking user role for:', currentAccount);
         console.log('📄 Stablecoin contract:', await stablecoin.getAddress());
         console.log('📄 FundManager contract:', await fundManager.getAddress());
-        
+
         // Check if admin (contract owner)
         const owner = await stablecoin.owner();
         console.log('👑 Contract owner:', owner);
         console.log('👤 Current account:', currentAccount);
-        
+
         isAdmin = owner.toLowerCase() === currentAccount.toLowerCase();
         console.log('✅ Is Admin?', isAdmin);
-        
+
         // Check if beneficiary using the correct contract function name
         const beneficiaryDetails = await fundManager.getBeneficiaryDetails(currentAccount);
         console.log('📋 Beneficiary details:', beneficiaryDetails);
         isBeneficiary = beneficiaryDetails[0]; // isActive
         console.log('✅ Is Beneficiary?', isBeneficiary);
-        
+
         // Update role card states
         const adminCard = document.getElementById('role-admin');
         const beneficiaryCard = document.getElementById('role-beneficiary');
-        
+
         if (!isAdmin) {
             adminCard.classList.add('disabled');
             adminCard.querySelector('.role-badge').textContent = 'Not Admin';
@@ -230,7 +230,7 @@ async function checkUserRole() {
             adminCard.classList.remove('disabled');
             adminCard.querySelector('.role-badge').textContent = '✓ Admin Wallet';
         }
-        
+
         if (!isBeneficiary) {
             beneficiaryCard.classList.add('disabled');
             beneficiaryCard.querySelector('.role-badge').textContent = 'Not Registered';
@@ -238,7 +238,7 @@ async function checkUserRole() {
             beneficiaryCard.classList.remove('disabled');
             beneficiaryCard.querySelector('.role-badge').textContent = '✓ Registered';
         }
-        
+
     } catch (error) {
         console.error('❌ Error checking role:', error);
         showToast('Error checking user role: ' + error.message, 'error');
@@ -255,32 +255,32 @@ async function selectRole(role) {
         showToast('You are not an admin. Please use the admin wallet.', 'warning');
         return;
     }
-    
+
     if (role === 'beneficiary' && !isBeneficiary) {
         showToast('You are not a registered beneficiary.', 'warning');
         return;
     }
-    
+
     currentRole = role;
-    
+
     // Mark selected
     document.querySelectorAll('.role-card').forEach(card => card.classList.remove('selected'));
     document.querySelector(`[data-role="${role}"]`).classList.add('selected');
-    
+
     // Transition to app
     setTimeout(async () => {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-screen').classList.remove('hidden');
-        
+
         // Setup UI based on role
         setupRoleBasedUI();
-        
+
         // Setup real-time sync for live updates
         await setupRealTimeSync();
-        
+
         // Load initial data
         await refreshData();
-        
+
         // Update review table
         await updateReviewTable();
     }, 300);
@@ -288,11 +288,11 @@ async function selectRole(role) {
 
 function setupRoleBasedUI() {
     // Update user info in sidebar
-    document.getElementById('user-role-display').textContent = 
-        currentRole === 'admin' ? 'Administrator' : 
-        currentRole === 'beneficiary' ? 'Beneficiary' : 'Public Viewer';
+    document.getElementById('user-role-display').textContent =
+        currentRole === 'admin' ? 'Administrator' :
+            currentRole === 'beneficiary' ? 'Beneficiary' : 'Public Viewer';
     document.getElementById('user-address-display').textContent = shortenAddress(currentAccount);
-    
+
     // Update avatar icon
     const avatarIcons = {
         admin: 'fas fa-user-shield',
@@ -300,22 +300,22 @@ function setupRoleBasedUI() {
         public: 'fas fa-eye'
     };
     document.getElementById('user-avatar').innerHTML = `<i class="${avatarIcons[currentRole]}"></i>`;
-    
+
     // Show/hide role-specific sections
     document.querySelectorAll('.admin-only').forEach(el => {
         el.style.display = currentRole === 'admin' ? '' : 'none';
     });
-    
+
     document.querySelectorAll('.beneficiary-only').forEach(el => {
         el.style.display = currentRole === 'beneficiary' ? '' : 'none';
     });
-    
+
     // Hide header balance for public view
     const headerBalance = document.querySelector('.header-balance');
     if (headerBalance) {
         headerBalance.style.display = currentRole === 'public' ? 'none' : '';
     }
-    
+
     // For public view, only show dashboard, transactions, and audit
     if (currentRole === 'public') {
         // Hide all action buttons that shouldn't be visible
@@ -330,25 +330,25 @@ function logout() {
     currentRole = null;
     isAdmin = false;
     isBeneficiary = false;
-    
+
     // Clear both session and local storage to forget connection completely
     sessionStorage.removeItem('rememberWalletConnection');
     localStorage.removeItem('rememberWalletConnection');
     sessionStorage.removeItem('viewOnlyMode');
-    
+
     document.getElementById('app-screen').classList.add('hidden');
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('role-selection').classList.add('hidden');
     document.getElementById('connect-btn').classList.remove('hidden');
     document.getElementById('connect-btn').disabled = false;
     document.getElementById('connect-btn').innerHTML = 'Connect MetaMask';
-    
+
     // Reset Remember Me checkbox
     const rememberCheckbox = document.getElementById('remember-connection');
     if (rememberCheckbox) {
         rememberCheckbox.checked = false;
     }
-    
+
     updateWalletStatus(false);
 }
 
@@ -361,14 +361,14 @@ function navigateTo(page) {
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.toggle('active', item.dataset.page === page);
     });
-    
+
     // Show page
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const pageEl = document.getElementById(`page-${page}`);
     if (pageEl) {
         pageEl.classList.add('active');
     }
-    
+
     // Update header
     const titles = {
         dashboard: ['Dashboard', 'Overview of relief fund activities'],
@@ -382,13 +382,13 @@ function navigateTo(page) {
         map: ['Relief Map', 'Geographic distribution of aid'],
         donate: ['Donor Portal', 'Support disaster relief efforts']
     };
-    
+
     document.getElementById('page-title').textContent = titles[page]?.[0] || page;
     document.getElementById('page-subtitle').textContent = titles[page]?.[1] || '';
-    
+
     // Close mobile sidebar
     document.getElementById('sidebar').classList.remove('open');
-    
+
     // Initialize map when visiting map page
     if (page === 'map') {
         setTimeout(() => {
@@ -396,23 +396,62 @@ function navigateTo(page) {
             updateMapStats();
         }, 100);
     }
-    
+
     // Load donor data when visiting donate page
     if (page === 'donate') {
         loadDonationHistory();
     }
-    
+
     // Refresh page-specific data
     refreshPageData(page);
 }
 
 async function refreshPageData(page) {
+    // In guest mode, populate with mock data instead of blockchain calls
+    if (window.isGuestMode) {
+        switch (page) {
+            case 'dashboard':
+                if (window.guestRole === 'admin') {
+                    populateMockAdminData();
+                } else {
+                    populateMockPublicData();
+                }
+                break;
+            case 'beneficiaries':
+                updateBeneficiariesTable();
+                break;
+            case 'merchants':
+                updateMerchantsTable();
+                break;
+            case 'wallet':
+                populateMockBeneficiaryData();
+                break;
+            case 'payment':
+                updateMerchantsTable();
+                break;
+            case 'transactions':
+                populateMockPublicData();
+                break;
+            case 'audit':
+                populateMockPublicData();
+                break;
+            case 'map':
+                initializeMap();
+                updateMapStats();
+                break;
+            case 'donate':
+                updateDonorDisplay();
+                break;
+        }
+        return;
+    }
+
     // Allow data loading even without wallet connection (read-only)
     // Skip if contracts not initialized (view-only mode might still be loading)
     if (!stablecoin || !fundManager) {
         return;
     }
-    
+
     switch (page) {
         case 'dashboard':
             await refreshData();
@@ -463,12 +502,12 @@ async function refreshData() {
             stablecoin.totalSupply(),
             fundManager.getTransactionCount()
         ]);
-        
+
         document.getElementById('stat-beneficiaries').textContent = beneficiaryCount.toString();
         document.getElementById('stat-merchants').textContent = merchantCount.toString();
         document.getElementById('stat-supply').textContent = formatAmount(totalSupply) + ' RUSD';
         document.getElementById('stat-transactions').textContent = txCount.toString();
-        
+
         // Update balance in header (only if connected)
         if (currentAccount) {
             const balance = await stablecoin.balanceOf(currentAccount);
@@ -476,27 +515,27 @@ async function refreshData() {
         } else {
             document.getElementById('header-balance').textContent = '-- RUSD';
         }
-        
+
         // Check system status
         const paused = await stablecoin.paused();
         updateSystemStatus(paused);
-        
+
         // Load recent activity
         await loadRecentActivity();
-        
+
         // Load minting history
         await loadMintingHistory();
-        
+
         // Update category breakdown charts
         await updateCategoryBreakdown();
-        
+
         // Load contract addresses for audit page
         document.getElementById('contract-rusd').textContent = CONFIG.RELIEF_STABLECOIN;
         document.getElementById('contract-manager').textContent = CONFIG.RELIEF_FUND_MANAGER;
-        
+
         // Log fund distribution summary for verification
         await getFundDistributionSummary();
-        
+
     } catch (error) {
         console.error('Error refreshing data:', error);
         showToast('Error loading data: ' + error.message, 'error');
@@ -507,7 +546,7 @@ function updateSystemStatus(paused) {
     const statusEl = document.getElementById('system-status');
     const pauseIcon = document.getElementById('pause-icon');
     const pauseText = document.getElementById('pause-text');
-    
+
     if (paused) {
         statusEl.innerHTML = '<i class="fas fa-pause-circle"></i> Paused';
         statusEl.className = 'status-value paused';
@@ -523,11 +562,11 @@ function updateSystemStatus(paused) {
 
 async function loadRecentActivity() {
     const activityList = document.getElementById('recent-activity-list');
-    
+
     try {
         const txCount = await fundManager.getTransactionCount();
         const count = Math.min(Number(txCount), 5);
-        
+
         if (count === 0) {
             activityList.innerHTML = `
                 <div class="empty-state">
@@ -537,12 +576,12 @@ async function loadRecentActivity() {
             `;
             return;
         }
-        
+
         let html = '';
         for (let i = Number(txCount) - 1; i >= Number(txCount) - count; i--) {
             const tx = await fundManager.getTransaction(i);
             const time = new Date(Number(tx.timestamp) * 1000);
-            
+
             html += `
                 <div class="activity-item">
                     <div class="activity-icon transfer">
@@ -561,9 +600,9 @@ async function loadRecentActivity() {
                 </div>
             `;
         }
-        
+
         activityList.innerHTML = html;
-        
+
     } catch (error) {
         console.error('Error loading activity:', error);
     }
@@ -575,11 +614,11 @@ async function loadRecentActivity() {
 
 async function loadBeneficiaries() {
     const container = document.getElementById('beneficiaries-list');
-    
+
     try {
         // Use getAllBeneficiaries to get the list of addresses
         const beneficiaryAddresses = await fundManager.getAllBeneficiaries();
-        
+
         if (beneficiaryAddresses.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
@@ -589,22 +628,22 @@ async function loadBeneficiaries() {
             `;
             return;
         }
-        
+
         let html = '';
         for (let i = 0; i < beneficiaryAddresses.length; i++) {
             const address = beneficiaryAddresses[i];
             const info = await fundManager.getBeneficiaryDetails(address);
             const balance = await stablecoin.balanceOf(address);
-            
+
             // info returns: [isActive, registeredAt, totalReceived, totalSpent]
             const isActive = info[0];
             const totalReceived = info[2];
             const totalSpent = info[3];
-            
+
             // Calculate expected balance and verify tally
             const expectedBalance = totalReceived - totalSpent;
             const tallyMatches = balance >= expectedBalance - 1n && balance <= expectedBalance + 1n; // Allow 1 wei tolerance
-            
+
             html += `
                 <div class="data-card ${!isActive ? 'inactive' : ''}">
                     <div class="data-avatar">
@@ -620,17 +659,17 @@ async function loadBeneficiaries() {
                     </div>
                     <div class="data-badge">
                         <span class="category-badge shelter">${formatAmount(balance)} RUSD</span>
-                        ${tallyMatches ? 
-                            '<span class="balance-tally" style="margin-left: 8px;"><i class="fas fa-check-circle"></i> Tally OK</span>' : 
-                            '<span class="balance-tally mismatch" style="margin-left: 8px;"><i class="fas fa-exclamation-triangle"></i> Check</span>'
-                        }
+                        ${tallyMatches ?
+                    '<span class="balance-tally" style="margin-left: 8px;"><i class="fas fa-check-circle"></i> Tally OK</span>' :
+                    '<span class="balance-tally mismatch" style="margin-left: 8px;"><i class="fas fa-exclamation-triangle"></i> Check</span>'
+                }
                     </div>
                 </div>
             `;
         }
-        
+
         container.innerHTML = html;
-        
+
     } catch (error) {
         console.error('Error loading beneficiaries:', error);
         container.innerHTML = `<div class="empty-state"><p>Error loading beneficiaries</p></div>`;
@@ -643,46 +682,46 @@ async function addBeneficiary() {
         showToast('Only admin can add beneficiaries', 'error');
         return;
     }
-    
+
     const address = document.getElementById('new-beneficiary-address').value.trim();
-    
+
     // Validate address - must be a proper Ethereum address
     if (!address) {
         showToast('Please enter a beneficiary address', 'error');
         return;
     }
-    
+
     // Check if user accidentally entered a private key
     if (address.length === 66 && address.startsWith('0x')) {
         showToast('⚠️ That looks like a PRIVATE KEY! Use the wallet ADDRESS (42 characters).', 'error');
         return;
     }
-    
+
     if (!ethers.isAddress(address)) {
         showToast('Invalid address format. Must be 42 characters starting with 0x', 'error');
         return;
     }
-    
+
     showProcessing('Adding beneficiary...');
-    
+
     try {
         console.log('👤 Adding beneficiary:', address);
         const tx = await fundManager.addBeneficiary(address);
         console.log('📤 TX sent:', tx.hash);
-        
+
         await tx.wait();
         console.log('✅ Beneficiary added!');
-        
+
         closeModal();
         showSuccess('Beneficiary added successfully!');
-        
+
         // Clear the input field
         document.getElementById('new-beneficiary-address').value = '';
-        
+
         // Force refresh all data
         await forceRefreshAll();
         await loadBeneficiaries();
-        
+
     } catch (error) {
         closeModal();
         console.error('Add beneficiary error:', error);
@@ -697,11 +736,11 @@ async function addBeneficiary() {
 async function loadMerchants() {
     const container = document.getElementById('merchants-list');
     merchants = [];
-    
+
     try {
         // Use getAllMerchants to get the list of addresses
         const merchantAddresses = await fundManager.getAllMerchants();
-        
+
         if (merchantAddresses.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
@@ -711,23 +750,23 @@ async function loadMerchants() {
             `;
             return;
         }
-        
+
         let html = '';
         for (let i = 0; i < merchantAddresses.length; i++) {
             const address = merchantAddresses[i];
             const info = await fundManager.getMerchantDetails(address);
-            
+
             // info returns: [isActive, category, name, registeredAt]
             const isActive = info[0];
             const category = Number(info[1]);
             const name = info[2];
-            
+
             merchants.push({
                 address: address,
                 name: name,
                 category: category
             });
-            
+
             html += `
                 <div class="merchant-card ${!isActive ? 'inactive' : ''}">
                     <div class="merchant-header">
@@ -748,9 +787,9 @@ async function loadMerchants() {
                 </div>
             `;
         }
-        
+
         container.innerHTML = html;
-        
+
     } catch (error) {
         console.error('Error loading merchants:', error);
         container.innerHTML = `<div class="empty-state"><p>Error loading merchants</p></div>`;
@@ -763,59 +802,59 @@ async function addMerchant() {
         showToast('Only admin can add merchants', 'error');
         return;
     }
-    
+
     const address = document.getElementById('new-merchant-address').value.trim();
     const name = document.getElementById('new-merchant-name').value.trim();
     const category = document.querySelector('input[name="category"]:checked')?.value;
-    
+
     // Validate address
     if (!address) {
         showToast('Please enter a merchant address', 'error');
         return;
     }
-    
+
     // Check if user accidentally entered a private key
     if (address.length === 66 && address.startsWith('0x')) {
         showToast('⚠️ That looks like a PRIVATE KEY! Use the wallet ADDRESS (42 characters).', 'error');
         return;
     }
-    
+
     if (!ethers.isAddress(address)) {
         showToast('Invalid address format. Must be 42 characters starting with 0x', 'error');
         return;
     }
-    
+
     if (!name) {
         showToast('Please enter a merchant name', 'error');
         return;
     }
-    
+
     if (category === undefined || category === null) {
         showToast('Please select a category', 'error');
         return;
     }
-    
+
     showProcessing('Adding merchant...');
-    
+
     try {
         console.log('🏪 Adding merchant:', name, 'at', address, 'category:', category);
         const tx = await fundManager.addMerchant(address, parseInt(category), name);
         console.log('📤 TX sent:', tx.hash);
-        
+
         await tx.wait();
         console.log('✅ Merchant added!');
-        
+
         closeModal();
         showSuccess('Merchant added successfully!');
-        
+
         // Clear form
         document.getElementById('new-merchant-address').value = '';
         document.getElementById('new-merchant-name').value = '';
-        
+
         // Force refresh all data
         await forceRefreshAll();
         await loadMerchants();
-        
+
     } catch (error) {
         closeModal();
         console.error('Add merchant error:', error);
@@ -836,51 +875,51 @@ async function mintTokens() {
         showToast('Only admin can mint tokens', 'error');
         return;
     }
-    
+
     const recipient = document.getElementById('mint-recipient').value.trim();
     const amount = document.getElementById('mint-amount').value;
-    
+
     // Validate address - must be a proper Ethereum address, NOT a private key
     if (!recipient) {
         showToast('Please enter a recipient address', 'error');
         return;
     }
-    
+
     // Check if user accidentally entered a private key (66 chars starting with 0x)
     if (recipient.length === 66 && recipient.startsWith('0x')) {
         showToast('⚠️ That looks like a PRIVATE KEY, not an ADDRESS! Use the wallet ADDRESS (42 characters).', 'error');
         return;
     }
-    
+
     if (!ethers.isAddress(recipient)) {
         showToast('Invalid address format. Must be 42 characters starting with 0x', 'error');
         return;
     }
-    
+
     if (!amount || parseFloat(amount) <= 0) {
         showToast('Please enter a valid amount', 'error');
         return;
     }
-    
+
     // Maximum mint validation (prevent unrealistic amounts)
     if (parseFloat(amount) > 1000000) {
         showToast('Maximum single mint is 1,000,000 RUSD', 'error');
         return;
     }
-    
+
     showProcessing('Minting tokens...');
-    
+
     try {
         const amountWei = ethers.parseEther(amount);
         console.log('🪙 Minting', amount, 'RUSD to', recipient);
-        
+
         // Step 1: Mint the tokens
         const tx = await stablecoin.mint(recipient, amountWei);
         console.log('📤 Mint TX sent:', tx.hash);
-        
+
         const receipt = await tx.wait();
         console.log('✅ Mint confirmed in block:', receipt.blockNumber);
-        
+
         // Step 2: Record distribution to update beneficiary's totalReceived
         try {
             const recordTx = await fundManager.recordDistribution(recipient, amountWei);
@@ -889,7 +928,7 @@ async function mintTokens() {
         } catch (recordError) {
             console.warn('⚠️ Could not record distribution (beneficiary may not be registered):', recordError.message);
         }
-        
+
         // Step 3: Add to local minting history
         const mintRecord = {
             txHash: tx.hash,
@@ -900,27 +939,27 @@ async function mintTokens() {
         };
         mintingHistory.unshift(mintRecord);
         saveMintingHistory();
-        
+
         closeModal();
         showSuccess(`${amount} RUSD minted to ${shortenAddress(recipient)}`);
         showConfetti();
-        
+
         // Send emergency notification for fund distribution
         sendEmergencyAlert(
-            '💰 Funds Distributed!', 
-            `${amount} RUSD sent to ${shortenAddress(recipient)}`, 
+            '💰 Funds Distributed!',
+            `${amount} RUSD sent to ${shortenAddress(recipient)}`,
             'success'
         );
-        
+
         document.getElementById('mint-recipient').value = '';
         document.getElementById('mint-amount').value = '';
-        
+
         // Force refresh all data after minting
         await forceRefreshAll();
-        
+
         // Update minting history display
         await loadMintingHistory();
-        
+
     } catch (error) {
         closeModal();
         console.error('Mint error:', error);
@@ -940,13 +979,13 @@ async function loadMintingHistory() {
     if (stored) {
         mintingHistory = JSON.parse(stored);
     }
-    
+
     // Also try to get from blockchain events
     try {
         if (stablecoin) {
             const filter = stablecoin.filters.TokensMinted();
             const events = await stablecoin.queryFilter(filter, -10000); // Last 10000 blocks
-            
+
             events.forEach(event => {
                 const existing = mintingHistory.find(m => m.txHash === event.transactionHash);
                 if (!existing) {
@@ -959,7 +998,7 @@ async function loadMintingHistory() {
                     });
                 }
             });
-            
+
             // Sort by most recent
             mintingHistory.sort((a, b) => (b.blockNumber || 0) - (a.blockNumber || 0));
             saveMintingHistory();
@@ -967,7 +1006,7 @@ async function loadMintingHistory() {
     } catch (e) {
         console.log('Could not load minting events from chain:', e.message);
     }
-    
+
     // Update UI
     updateMintingHistoryUI();
 }
@@ -975,7 +1014,7 @@ async function loadMintingHistory() {
 function updateMintingHistoryUI() {
     const container = document.getElementById('minting-history-list');
     if (!container) return;
-    
+
     if (mintingHistory.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
@@ -985,7 +1024,7 @@ function updateMintingHistoryUI() {
         `;
         return;
     }
-    
+
     container.innerHTML = mintingHistory.slice(0, 10).map(mint => `
         <div class="mint-history-item">
             <div class="mint-icon"><i class="fas fa-coins"></i></div>
@@ -1006,18 +1045,18 @@ async function loadWalletData() {
     try {
         const balance = await stablecoin.balanceOf(currentAccount);
         const info = await fundManager.getBeneficiaryDetails(currentAccount);
-        
+
         // info returns: [isActive, registeredAt, totalReceived, totalSpent]
         const totalReceived = info[2];
         const totalSpent = info[3];
         const currentBalance = balance;
-        
+
         // Update wallet display
         document.getElementById('wallet-balance').textContent = formatAmount(currentBalance);
         document.getElementById('wallet-address-card').textContent = shortenAddress(currentAccount);
         document.getElementById('total-received').textContent = formatAmount(totalReceived) + ' RUSD';
         document.getElementById('total-spent').textContent = formatAmount(totalSpent) + ' RUSD';
-        
+
         // Calculate and verify balance tally
         const expectedBalance = totalReceived - totalSpent;
         console.log('💰 Balance Tally Check:');
@@ -1025,10 +1064,10 @@ async function loadWalletData() {
         console.log('   Total Spent:', formatAmount(totalSpent), 'RUSD');
         console.log('   Expected Balance:', formatAmount(expectedBalance), 'RUSD');
         console.log('   Actual Balance:', formatAmount(currentBalance), 'RUSD');
-        
+
         // Load user's transactions
         await loadMyTransactions();
-        
+
     } catch (error) {
         console.error('Error loading wallet data:', error);
     }
@@ -1036,21 +1075,21 @@ async function loadWalletData() {
 
 async function loadMyTransactions() {
     const container = document.getElementById('my-transactions');
-    
+
     try {
         const txCount = await fundManager.getTransactionCount();
         let html = '';
         let found = 0;
-        
+
         for (let i = Number(txCount) - 1; i >= 0 && found < 10; i--) {
             const tx = await fundManager.getTransaction(i);
-            
-            if (tx.from.toLowerCase() === currentAccount.toLowerCase() || 
+
+            if (tx.from.toLowerCase() === currentAccount.toLowerCase() ||
                 tx.to.toLowerCase() === currentAccount.toLowerCase()) {
-                
+
                 const isSent = tx.from.toLowerCase() === currentAccount.toLowerCase();
                 const time = new Date(Number(tx.timestamp) * 1000);
-                
+
                 html += `
                     <div class="transaction-item">
                         <div class="tx-icon ${isSent ? 'sent' : 'received'}">
@@ -1074,7 +1113,7 @@ async function loadMyTransactions() {
                 found++;
             }
         }
-        
+
         if (html === '') {
             container.innerHTML = `
                 <div class="empty-state">
@@ -1085,7 +1124,7 @@ async function loadMyTransactions() {
         } else {
             container.innerHTML = html;
         }
-        
+
     } catch (error) {
         console.error('Error loading transactions:', error);
     }
@@ -1096,11 +1135,11 @@ async function loadPaymentData() {
         // Load balance
         const balance = await stablecoin.balanceOf(currentAccount);
         document.getElementById('payment-balance').textContent = formatAmount(balance);
-        
+
         // Load merchants for selection
         const container = document.getElementById('merchant-selector');
         const merchantAddresses = await fundManager.getAllMerchants();
-        
+
         if (merchantAddresses.length === 0) {
             container.innerHTML = `
                 <div class="empty-state small">
@@ -1110,28 +1149,28 @@ async function loadPaymentData() {
             `;
             return;
         }
-        
+
         let html = '';
         merchants = [];
-        
+
         for (let i = 0; i < merchantAddresses.length; i++) {
             const address = merchantAddresses[i];
             const info = await fundManager.getMerchantDetails(address);
-            
+
             // info returns: [isActive, category, name, registeredAt]
             const isActive = info[0];
             const category = Number(info[1]);
             const name = info[2];
-            
+
             // Only show active merchants for payment
             if (!isActive) continue;
-            
+
             merchants.push({
                 address: address,
                 name: name,
                 category: category
             });
-            
+
             html += `
                 <div class="merchant-option" data-address="${address}" onclick="selectMerchantForPayment('${address}')">
                     <span class="category-badge ${getCategoryClass(category)}">
@@ -1144,7 +1183,7 @@ async function loadPaymentData() {
                 </div>
             `;
         }
-        
+
         if (html === '') {
             container.innerHTML = `
                 <div class="empty-state small">
@@ -1154,9 +1193,9 @@ async function loadPaymentData() {
             `;
             return;
         }
-        
+
         container.innerHTML = html;
-        
+
     } catch (error) {
         console.error('Error loading payment data:', error);
     }
@@ -1164,7 +1203,7 @@ async function loadPaymentData() {
 
 function selectMerchantForPayment(address) {
     selectedMerchant = address;
-    
+
     document.querySelectorAll('.merchant-option').forEach(el => {
         el.classList.toggle('selected', el.dataset.address === address);
     });
@@ -1176,53 +1215,53 @@ async function makePayment() {
         showToast('Only beneficiaries can make payments', 'error');
         return;
     }
-    
+
     if (!selectedMerchant) {
         showToast('Please select a merchant', 'error');
         return;
     }
-    
+
     const amount = document.getElementById('payment-amount').value;
-    
+
     if (!amount || parseFloat(amount) <= 0) {
         showToast('Please enter a valid amount', 'error');
         return;
     }
-    
+
     // Check balance first
     const balance = await stablecoin.balanceOf(currentAccount);
     const amountWei = ethers.parseEther(amount);
-    
+
     if (balance < amountWei) {
         showToast('Insufficient balance', 'error');
         return;
     }
-    
+
     showProcessing('Processing payment...');
-    
+
     try {
         // Execute transfer
         const tx = await stablecoin.transfer(selectedMerchant, amountWei);
         console.log('💳 Payment TX sent:', tx.hash);
-        
+
         // Wait for confirmation
         const receipt = await tx.wait();
         console.log('✅ Payment confirmed in block:', receipt.blockNumber);
-        
+
         closeModal();
-        
+
         const merchant = merchants.find(m => m.address === selectedMerchant);
         showSuccess(`Payment of ${amount} RUSD to ${merchant?.name || 'Merchant'} successful!`);
-        
+
         // Clear form
         document.getElementById('payment-amount').value = '';
         selectedMerchant = null;
         document.querySelectorAll('.merchant-option').forEach(el => el.classList.remove('selected'));
-        
+
         // Force immediate refresh of ALL data
         console.log('🔄 Force refreshing all data after payment...');
         await forceRefreshAll();
-        
+
     } catch (error) {
         closeModal();
         console.error('Payment error:', error);
@@ -1235,25 +1274,25 @@ async function forceRefreshAll() {
     try {
         // Small delay to ensure blockchain state is updated
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         // Refresh main stats
         await refreshData();
-        
+
         // Refresh wallet data
         await loadPaymentData();
-        
+
         // Refresh recent activity
         await loadRecentActivity();
-        
+
         // Refresh all transactions page
         await loadAllTransactions();
-        
+
         // Refresh audit data
         await loadAuditData();
-        
+
         // Update review table
         await updateReviewTable();
-        
+
         console.log('✅ Force refresh complete!');
     } catch (error) {
         console.error('Error in force refresh:', error);
@@ -1266,10 +1305,10 @@ async function forceRefreshAll() {
 
 async function loadAllTransactions() {
     const container = document.getElementById('all-transactions');
-    
+
     try {
         const txCount = await fundManager.getTransactionCount();
-        
+
         if (txCount === 0n) {
             container.innerHTML = `
                 <div class="empty-state">
@@ -1279,14 +1318,14 @@ async function loadAllTransactions() {
             `;
             return;
         }
-        
+
         let html = '';
         const count = Math.min(Number(txCount), 50);
-        
+
         for (let i = Number(txCount) - 1; i >= Number(txCount) - count; i--) {
             const tx = await fundManager.getTransaction(i);
             const time = new Date(Number(tx.timestamp) * 1000);
-            
+
             html += `
                 <div class="transaction-item">
                     <div class="tx-icon sent">
@@ -1305,9 +1344,9 @@ async function loadAllTransactions() {
                 </div>
             `;
         }
-        
+
         container.innerHTML = html;
-        
+
     } catch (error) {
         console.error('Error loading transactions:', error);
     }
@@ -1329,11 +1368,11 @@ async function loadAuditData() {
             fundManager.totalBeneficiaries(),
             stablecoin.totalSupply()
         ]);
-        
+
         document.getElementById('audit-total-tx').textContent = txCount.toString();
         document.getElementById('audit-total-volume').textContent = formatAmount(totalSupply) + ' RUSD';
         document.getElementById('audit-total-beneficiaries').textContent = beneficiaryCount.toString();
-        
+
     } catch (error) {
         console.error('Error loading audit data:', error);
     }
@@ -1351,10 +1390,10 @@ function copyAddress(type) {
 
 async function togglePause() {
     showProcessing('Processing...');
-    
+
     try {
         const paused = await stablecoin.paused();
-        
+
         let tx;
         if (paused) {
             tx = await stablecoin.unpause();
@@ -1362,11 +1401,11 @@ async function togglePause() {
             tx = await stablecoin.pause();
         }
         await tx.wait();
-        
+
         closeModal();
         showSuccess(paused ? 'System resumed!' : 'System paused!');
         await refreshData();
-        
+
     } catch (error) {
         closeModal();
         showError('Failed: ' + (error.reason || error.message));
@@ -1413,20 +1452,20 @@ function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    
+
     const icons = {
         success: 'fas fa-check-circle',
         error: 'fas fa-times-circle',
         warning: 'fas fa-exclamation-triangle'
     };
-    
+
     toast.innerHTML = `
         <i class="${icons[type]}"></i>
         <span class="toast-message">${message}</span>
     `;
-    
+
     container.appendChild(toast);
-    
+
     setTimeout(() => {
         toast.style.animation = 'slideInRight 0.3s ease reverse';
         setTimeout(() => toast.remove(), 300);
@@ -1448,11 +1487,11 @@ function formatAmount(wei) {
 function formatTime(date) {
     const now = new Date();
     const diff = now - date;
-    
+
     if (diff < 60000) return 'Just now';
     if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
     if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-    
+
     return date.toLocaleDateString();
 }
 
@@ -1505,11 +1544,11 @@ function initTheme() {
 function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
+
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
     updateThemeIcon(newTheme);
-    
+
     showToast(`Switched to ${newTheme} mode`, 'success');
 }
 
@@ -1539,34 +1578,34 @@ let eventListeners = [];
 
 async function setupRealTimeSync() {
     if (!stablecoin || !fundManager) return;
-    
+
     console.log('🔄 Setting up real-time sync...');
-    
+
     // Remove previous listeners
     cleanupEventListeners();
-    
+
     try {
         // Listen for Transfer events on stablecoin
         const transferFilter = stablecoin.filters.Transfer();
         stablecoin.on(transferFilter, handleTransferEvent);
         eventListeners.push({ contract: stablecoin, filter: transferFilter, handler: handleTransferEvent });
-        
+
         // Listen for PaymentProcessed events on fundManager
         const paymentFilter = fundManager.filters.PaymentProcessed();
         fundManager.on(paymentFilter, handlePaymentEvent);
         eventListeners.push({ contract: fundManager, filter: paymentFilter, handler: handlePaymentEvent });
-        
+
         // Listen for TokensMinted events
         const mintFilter = stablecoin.filters.TokensMinted();
         stablecoin.on(mintFilter, handleMintEvent);
         eventListeners.push({ contract: stablecoin, filter: mintFilter, handler: handleMintEvent });
-        
+
         // Update live indicator
         const liveIndicator = document.getElementById('live-indicator');
         if (liveIndicator) {
             liveIndicator.style.display = 'inline-flex';
         }
-        
+
         console.log('✅ Real-time sync active!');
     } catch (error) {
         console.error('Error setting up real-time sync:', error);
@@ -1586,14 +1625,14 @@ function cleanupEventListeners() {
 
 async function handleTransferEvent(from, to, value, event) {
     console.log('📨 Transfer event:', { from, to, value: ethers.formatEther(value) });
-    
+
     // Show notification
     const amount = parseFloat(ethers.formatEther(value)).toFixed(2);
     showToast(`💸 Transfer: ${amount} RUSD`, 'success');
-    
+
     // Refresh data
     await refreshAllViews();
-    
+
     // Add confetti for significant transfers
     if (parseFloat(amount) >= 100) {
         showConfetti();
@@ -1602,27 +1641,27 @@ async function handleTransferEvent(from, to, value, event) {
 
 async function handlePaymentEvent(from, to, amount, category, timestamp, event) {
     console.log('💳 Payment event:', { from, to, amount: ethers.formatEther(amount), category });
-    
+
     const categoryName = getCategoryName(category);
     const amountStr = parseFloat(ethers.formatEther(amount)).toFixed(2);
     showToast(`💳 Payment: ${amountStr} RUSD for ${categoryName}`, 'success');
-    
+
     // Refresh all views
     await refreshAllViews();
-    
+
     // Update review table
     await updateReviewTable();
 }
 
 async function handleMintEvent(to, amount, timestamp, event) {
     console.log('🪙 Mint event:', { to, amount: ethers.formatEther(amount) });
-    
+
     const amountStr = parseFloat(ethers.formatEther(amount)).toFixed(2);
     showToast(`🪙 Minted: ${amountStr} RUSD to ${shortenAddress(to)}`, 'success');
-    
+
     // Refresh all views
     await refreshAllViews();
-    
+
     // Add confetti for large mints
     if (parseFloat(amountStr) >= 500) {
         showConfetti();
@@ -1631,16 +1670,16 @@ async function handleMintEvent(to, amount, timestamp, event) {
 
 async function refreshAllViews() {
     console.log('🔄 Refreshing all views...');
-    
+
     try {
         // Refresh main dashboard data
         await refreshData();
-        
+
         // Refresh page-specific data based on current page
         const activePage = document.querySelector('.page.active');
         if (activePage) {
             const pageId = activePage.id;
-            
+
             if (pageId === 'page-beneficiaries') {
                 await loadBeneficiaries();
             } else if (pageId === 'page-merchants') {
@@ -1653,10 +1692,10 @@ async function refreshAllViews() {
                 await loadAuditData();
             }
         }
-        
+
         // Update review table
         await updateReviewTable();
-        
+
         console.log('✅ All views refreshed!');
     } catch (error) {
         console.error('Error refreshing views:', error);
@@ -1670,11 +1709,11 @@ async function refreshAllViews() {
 async function loadTransactions() {
     const container = document.getElementById('all-transactions');
     if (!container) return;
-    
+
     try {
         const txCount = await fundManager.getTransactionCount();
         const count = Math.min(Number(txCount), 50);
-        
+
         if (count === 0) {
             container.innerHTML = `
                 <div class="empty-state">
@@ -1684,12 +1723,12 @@ async function loadTransactions() {
             `;
             return;
         }
-        
+
         let html = '';
         for (let i = Number(txCount) - 1; i >= Math.max(0, Number(txCount) - count); i--) {
             const tx = await fundManager.getTransaction(i);
             const time = new Date(Number(tx.timestamp) * 1000);
-            
+
             html += `
                 <div class="transaction-item">
                     <div class="tx-icon ${getCategoryClass(tx.category)}">
@@ -1712,9 +1751,9 @@ async function loadTransactions() {
                 </div>
             `;
         }
-        
+
         container.innerHTML = html;
-        
+
     } catch (error) {
         console.error('Error loading transactions:', error);
         container.innerHTML = `<div class="empty-state"><p>Error loading transactions</p></div>`;
@@ -1727,25 +1766,25 @@ async function loadAuditData() {
         const txCount = await fundManager.getTransactionCount();
         const totalSupply = await stablecoin.totalSupply();
         const beneficiaryCount = await fundManager.totalBeneficiaries();
-        
+
         // Calculate category breakdown for charts
         await updateCategoryBreakdown();
-        
+
         // Load minting history
         await loadMintingHistory();
-        
+
         const auditTxEl = document.getElementById('audit-total-tx');
         const auditVolumeEl = document.getElementById('audit-total-volume');
         const auditBeneficiariesEl = document.getElementById('audit-total-beneficiaries');
         const totalSpentEl = document.getElementById('total-spent');
         const dashboardTotalEl = document.getElementById('dashboard-total');
-        
+
         if (auditTxEl) auditTxEl.textContent = txCount.toString();
         if (auditVolumeEl) auditVolumeEl.textContent = formatAmount(totalSupply) + ' RUSD';
         if (auditBeneficiariesEl) auditBeneficiariesEl.textContent = beneficiaryCount.toString();
         if (totalSpentEl) totalSpentEl.textContent = formatAmount(totalSupply);
         if (dashboardTotalEl) dashboardTotalEl.textContent = formatAmount(totalSupply);
-        
+
     } catch (error) {
         console.error('Error loading audit data:', error);
     }
@@ -1757,7 +1796,7 @@ async function loadAuditData() {
 
 function showConfetti() {
     const colors = ['#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#0ea5e9'];
-    
+
     for (let i = 0; i < 50; i++) {
         setTimeout(() => {
             const confetti = document.createElement('div');
@@ -1767,7 +1806,7 @@ function showConfetti() {
             confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
             confetti.style.animationDuration = (2 + Math.random() * 2) + 's';
             document.body.appendChild(confetti);
-            
+
             setTimeout(() => confetti.remove(), 5000);
         }, i * 30);
     }
@@ -1779,16 +1818,16 @@ function showConfetti() {
 
 async function downloadAuditCSV() {
     showToast('Generating CSV report...', 'warning');
-    
+
     try {
         const transactions = await getTransactionHistory();
-        
+
         let csv = 'Transaction Hash,Type,From,To,Amount,Category,Timestamp\n';
-        
+
         transactions.forEach(tx => {
             csv += `${tx.hash},${tx.type},${tx.from},${tx.to},${tx.amount},${tx.category || 'N/A'},${tx.timestamp}\n`;
         });
-        
+
         // Create download link
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
@@ -1799,7 +1838,7 @@ async function downloadAuditCSV() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        
+
         showToast('CSV downloaded successfully!', 'success');
     } catch (error) {
         console.error('CSV download error:', error);
@@ -1809,11 +1848,11 @@ async function downloadAuditCSV() {
 
 async function downloadAuditPDF() {
     showToast('Generating PDF report...', 'warning');
-    
+
     try {
         // Simple PDF generation using HTML content
         const transactions = await getTransactionHistory();
-        
+
         const htmlContent = `
             <!DOCTYPE html>
             <html>
@@ -1878,13 +1917,13 @@ async function downloadAuditPDF() {
             </body>
             </html>
         `;
-        
+
         // Open print dialog for PDF
         const printWindow = window.open('', '_blank');
         printWindow.document.write(htmlContent);
         printWindow.document.close();
         printWindow.print();
-        
+
         showToast('PDF report ready for printing!', 'success');
     } catch (error) {
         console.error('PDF generation error:', error);
@@ -1895,14 +1934,14 @@ async function downloadAuditPDF() {
 async function getTransactionHistory() {
     // Get transactions from FundManager contract (audit trail) + minting events
     const transactions = [];
-    
+
     try {
         if (!fundManager) return transactions;
-        
+
         // Get payment transactions from FundManager
         const txCount = await fundManager.getTransactionCount();
         const count = Math.min(Number(txCount), 100);
-        
+
         for (let i = Number(txCount) - 1; i >= Math.max(0, Number(txCount) - count); i--) {
             try {
                 const tx = await fundManager.getTransaction(i);
@@ -1919,7 +1958,7 @@ async function getTransactionHistory() {
                 console.error(`Error getting transaction ${i}:`, e);
             }
         }
-        
+
         // Also add minting history
         mintingHistory.forEach(mint => {
             transactions.push({
@@ -1932,14 +1971,14 @@ async function getTransactionHistory() {
                 timestamp: mint.timestamp
             });
         });
-        
+
         // Sort by timestamp (most recent first)
         transactions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
+
     } catch (error) {
         console.error('Error getting transaction history:', error);
     }
-    
+
     return transactions;
 }
 
@@ -1950,29 +1989,29 @@ async function getTransactionHistory() {
 async function traceTokenJourney() {
     const txHashInput = document.getElementById('journey-tx-hash');
     const txHash = txHashInput ? txHashInput.value.trim() : '';
-    
+
     if (!txHash) {
         showToast('Please enter a transaction hash to trace', 'warning');
         return;
     }
-    
+
     showToast('Tracing token journey...', 'warning');
-    
+
     try {
         const receipt = await provider.getTransactionReceipt(txHash);
-        
+
         if (!receipt) {
             showToast('Transaction not found', 'error');
             return;
         }
-        
+
         // Parse the receipt to show journey
         const timeline = document.getElementById('journey-timeline');
         if (!timeline) return;
-        
+
         const block = await provider.getBlock(receipt.blockNumber);
         const timestamp = new Date(block.timestamp * 1000).toLocaleString();
-        
+
         timeline.innerHTML = `
             <div class="journey-step">
                 <div class="journey-icon transfer"><i class="fas fa-paper-plane"></i></div>
@@ -2017,9 +2056,9 @@ async function traceTokenJourney() {
                 </div>
             </div>
         `;
-        
+
         showToast('Token journey traced!', 'success');
-        
+
     } catch (error) {
         console.error('Error tracing journey:', error);
         showToast('Failed to trace transaction', 'error');
@@ -2044,9 +2083,9 @@ async function updateReviewTable() {
 function filterReviewTransactions() {
     const filter = document.getElementById('review-filter');
     const filterValue = filter ? filter.value : 'all';
-    
+
     let filtered = allTransactions;
-    
+
     if (filterValue === 'mints') {
         filtered = allTransactions.filter(tx => tx.type === 'Transfer' && tx.from === '0x0000000000000000000000000000000000000000');
     } else if (filterValue === 'transfers') {
@@ -2054,14 +2093,14 @@ function filterReviewTransactions() {
     } else if (filterValue === 'payments') {
         filtered = allTransactions.filter(tx => tx.type === 'Payment');
     }
-    
+
     renderReviewTable(filtered);
 }
 
 function renderReviewTable(transactions) {
     const tbody = document.getElementById('review-table-body');
     if (!tbody) return;
-    
+
     if (transactions.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -2073,7 +2112,7 @@ function renderReviewTable(transactions) {
         `;
         return;
     }
-    
+
     tbody.innerHTML = transactions.map(tx => `
         <tr>
             <td><code>${tx.hash ? tx.hash.substring(0, 10) + '...' : 'N/A'}</code></td>
@@ -2111,23 +2150,23 @@ async function updateCategoryBreakdown() {
             EDUCATION: 0,
             UTILITIES: 0
         };
-        
+
         let grandTotal = 0;
-        
+
         for (let i = 0; i < Number(txCount); i++) {
             const tx = await fundManager.getTransaction(i);
             const amount = parseFloat(ethers.formatEther(tx.amount));
             const category = getCategoryName(tx.category);
-            
+
             if (categoryTotals.hasOwnProperty(category)) {
                 categoryTotals[category] += amount;
             }
             grandTotal += amount;
         }
-        
+
         // Update pie chart
         updatePieChart(categoryTotals, grandTotal);
-        
+
         // Update dashboard totals
         const dashboardTotal = document.getElementById('dashboard-total');
         const totalSpentEl = document.getElementById('total-spent');
@@ -2135,9 +2174,9 @@ async function updateCategoryBreakdown() {
         if (totalSpentEl && totalSpentEl.closest('.pie-center-text')) {
             totalSpentEl.textContent = grandTotal.toFixed(2);
         }
-        
+
         console.log('📊 Category Breakdown:', categoryTotals);
-        
+
     } catch (error) {
         console.error('Error updating category breakdown:', error);
     }
@@ -2146,14 +2185,14 @@ async function updateCategoryBreakdown() {
 function updatePieChart(categoryTotals, grandTotal) {
     const pieChart = document.getElementById('category-pie-chart');
     const dashboardPieChart = document.getElementById('dashboard-pie-chart');
-    
+
     if (!grandTotal || grandTotal === 0) {
         // Show empty state
         if (pieChart) pieChart.style.background = 'var(--bg-tertiary)';
         if (dashboardPieChart) dashboardPieChart.style.background = 'var(--bg-tertiary)';
         return;
     }
-    
+
     const colors = {
         FOOD: 'var(--cat-food)',
         MEDICAL: 'var(--cat-medical)',
@@ -2161,11 +2200,11 @@ function updatePieChart(categoryTotals, grandTotal) {
         EDUCATION: 'var(--cat-education)',
         UTILITIES: 'var(--cat-utilities)'
     };
-    
+
     // Build conic gradient
     let gradientParts = [];
     let currentAngle = 0;
-    
+
     Object.keys(categoryTotals).forEach(cat => {
         if (categoryTotals[cat] > 0) {
             const percentage = (categoryTotals[cat] / grandTotal) * 100;
@@ -2174,11 +2213,11 @@ function updatePieChart(categoryTotals, grandTotal) {
             currentAngle = endAngle;
         }
     });
-    
-    const gradient = gradientParts.length > 0 
+
+    const gradient = gradientParts.length > 0
         ? `conic-gradient(${gradientParts.join(', ')})`
         : 'var(--bg-tertiary)';
-    
+
     if (pieChart) pieChart.style.background = gradient;
     if (dashboardPieChart) dashboardPieChart.style.background = gradient;
 }
@@ -2191,37 +2230,37 @@ async function getFundDistributionSummary() {
     try {
         const totalSupply = await stablecoin.totalSupply();
         const beneficiaryAddresses = await fundManager.getAllBeneficiaries();
-        
+
         let totalDistributed = 0n;
         let totalSpent = 0n;
         let totalRemaining = 0n;
-        
+
         for (const addr of beneficiaryAddresses) {
             const info = await fundManager.getBeneficiaryDetails(addr);
             const balance = await stablecoin.balanceOf(addr);
-            
+
             totalDistributed += info[2]; // totalReceived
             totalSpent += info[3]; // totalSpent
             totalRemaining += balance;
         }
-        
+
         console.log('💰 Fund Distribution Summary:');
         console.log('   Total Supply:', formatAmount(totalSupply), 'RUSD');
         console.log('   Total Distributed:', formatAmount(totalDistributed), 'RUSD');
         console.log('   Total Spent:', formatAmount(totalSpent), 'RUSD');
         console.log('   Total Remaining:', formatAmount(totalRemaining), 'RUSD');
-        
+
         // Update Fund Summary Panel in Dashboard
         const fundTotalSupply = document.getElementById('fund-total-supply');
         const fundDistributed = document.getElementById('fund-distributed');
         const fundSpent = document.getElementById('fund-spent');
         const fundRemaining = document.getElementById('fund-remaining');
-        
+
         if (fundTotalSupply) fundTotalSupply.textContent = formatAmount(totalSupply) + ' RUSD';
         if (fundDistributed) fundDistributed.textContent = formatAmount(totalDistributed) + ' RUSD';
         if (fundSpent) fundSpent.textContent = formatAmount(totalSpent) + ' RUSD';
         if (fundRemaining) fundRemaining.textContent = formatAmount(totalRemaining) + ' RUSD';
-        
+
         return {
             totalSupply: formatAmount(totalSupply),
             totalDistributed: formatAmount(totalDistributed),
@@ -2243,15 +2282,15 @@ function showMerchantQR(address, name, category) {
     const merchantName = document.getElementById('qr-merchant-name');
     const qrAddress = document.getElementById('qr-address');
     const qrCategory = document.getElementById('qr-category');
-    
+
     // Clear previous QR code
     container.innerHTML = '';
-    
+
     // Update details
     if (merchantName) merchantName.textContent = name;
     if (qrAddress) qrAddress.textContent = address;
     if (qrCategory) qrCategory.textContent = getCategoryName(category);
-    
+
     // Generate QR code with payment data
     const paymentData = JSON.stringify({
         type: 'relief-payment',
@@ -2261,7 +2300,7 @@ function showMerchantQR(address, name, category) {
         network: 'localhost:8545',
         token: CONFIG.RELIEF_STABLECOIN
     });
-    
+
     // Use QRCode library
     if (typeof QRCode !== 'undefined') {
         QRCode.toCanvas(paymentData, { width: 200, margin: 2 }, (error, canvas) => {
@@ -2276,7 +2315,7 @@ function showMerchantQR(address, name, category) {
         // Fallback: show text
         container.innerHTML = `<div class="qr-fallback"><code>${address}</code></div>`;
     }
-    
+
     // Show modal
     document.getElementById('modal-overlay').classList.remove('hidden');
     document.getElementById('modal-qr').classList.remove('hidden');
@@ -2300,7 +2339,7 @@ async function requestNotificationPermission() {
 function sendEmergencyAlert(title, message, type = 'info') {
     // Show toast
     showToast(message, type);
-    
+
     // Send browser notification if enabled
     if (notificationsEnabled && 'Notification' in window) {
         const notification = new Notification(title, {
@@ -2310,13 +2349,13 @@ function sendEmergencyAlert(title, message, type = 'info') {
             tag: 'relief-alert',
             requireInteraction: type === 'emergency'
         });
-        
+
         notification.onclick = () => {
             window.focus();
             notification.close();
         };
     }
-    
+
     // Play sound for emergency alerts
     if (type === 'emergency') {
         playAlertSound();
@@ -2328,14 +2367,14 @@ function playAlertSound() {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
-        
+
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
-        
+
         oscillator.frequency.value = 800;
         oscillator.type = 'sine';
         gainNode.gain.value = 0.3;
-        
+
         oscillator.start();
         setTimeout(() => oscillator.stop(), 200);
     } catch (e) {
@@ -2356,13 +2395,13 @@ function initializeMap() {
         reliefMap.invalidateSize();
         return;
     }
-    
+
     const mapContainer = document.getElementById('relief-map');
     if (!mapContainer) {
         console.log('Map container not found');
         return;
     }
-    
+
     try {
         // Initialize Leaflet map centered on India with fast loading
         reliefMap = L.map('relief-map', {
@@ -2370,7 +2409,7 @@ function initializeMap() {
             zoomControl: true,
             attributionControl: true
         }).setView([20.5937, 78.9629], 5);
-        
+
         // Add OpenStreetMap tiles with fast loading
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap',
@@ -2380,14 +2419,14 @@ function initializeMap() {
             updateWhenIdle: true,
             keepBuffer: 2
         }).addTo(reliefMap);
-        
+
         // Wait for tiles to load then add markers
         setTimeout(() => {
             addDisasterZones();
             addMerchantMarkers();
             reliefMap.invalidateSize();
         }, 500);
-        
+
     } catch (error) {
         console.error('Map initialization error:', error);
     }
@@ -2401,13 +2440,13 @@ function addDisasterZones() {
         { lat: 22.5726, lng: 88.3639, name: 'Kolkata Distribution', severity: 'low', beneficiaries: 100, distributed: 12000 },
         { lat: 28.6139, lng: 77.2090, name: 'Delhi Emergency Hub', severity: 'medium', beneficiaries: 120, distributed: 18000 }
     ];
-    
+
     const severityColors = {
         high: '#ef4444',
         medium: '#f59e0b',
         low: '#22c55e'
     };
-    
+
     disasterZones.forEach(zone => {
         const marker = L.circleMarker([zone.lat, zone.lng], {
             radius: 15,
@@ -2417,7 +2456,7 @@ function addDisasterZones() {
             opacity: 1,
             fillOpacity: 0.7
         }).addTo(reliefMap);
-        
+
         marker.bindPopup(`
             <div class="map-popup">
                 <h4>${zone.name}</h4>
@@ -2426,7 +2465,7 @@ function addDisasterZones() {
                 <p><strong>Distributed:</strong> ${zone.distributed.toLocaleString()} RUSD</p>
             </div>
         `);
-        
+
         mapMarkers.push(marker);
     });
 }
@@ -2437,13 +2476,13 @@ function addMerchantMarkers() {
         { lat: 19.1, lng: 72.9, name: 'Community Pharmacy', category: 'MEDICAL' },
         { lat: 13.1, lng: 80.3, name: 'Relief Housing Co', category: 'SHELTER' }
     ];
-    
+
     const merchantIcon = L.divIcon({
         className: 'merchant-marker',
         html: '<i class="fas fa-store"></i>',
         iconSize: [30, 30]
     });
-    
+
     merchantLocations.forEach(loc => {
         const marker = L.marker([loc.lat, loc.lng], { icon: merchantIcon }).addTo(reliefMap);
         marker.bindPopup(`
@@ -2458,15 +2497,30 @@ function addMerchantMarkers() {
 }
 
 async function updateMapStats() {
+    // Guest mode - use mock impressive stats
+    if (window.isGuestMode) {
+        const mapBeneficiaries = document.getElementById('map-beneficiaries');
+        const mapMerchants = document.getElementById('map-merchants');
+        const mapDistributed = document.getElementById('map-distributed');
+        const mapActiveZones = document.getElementById('map-active-zones');
+
+        if (mapBeneficiaries) mapBeneficiaries.textContent = '47';
+        if (mapMerchants) mapMerchants.textContent = '128';
+        if (mapDistributed) mapDistributed.textContent = '2,458,750.00';
+        if (mapActiveZones) mapActiveZones.textContent = '12';
+        return;
+    }
+
+    // Live mode - fetch from blockchain
     try {
         const beneficiaryCount = await fundManager.totalBeneficiaries();
         const merchantCount = await fundManager.totalMerchants();
         const totalSupply = await stablecoin.totalSupply();
-        
+
         const mapBeneficiaries = document.getElementById('map-beneficiaries');
         const mapMerchants = document.getElementById('map-merchants');
         const mapDistributed = document.getElementById('map-distributed');
-        
+
         if (mapBeneficiaries) mapBeneficiaries.textContent = beneficiaryCount.toString();
         if (mapMerchants) mapMerchants.textContent = merchantCount.toString();
         if (mapDistributed) mapDistributed.textContent = formatAmount(totalSupply);
@@ -2485,7 +2539,7 @@ function setDonationAmount(amount) {
     // Convert RUSD to approximate ETH (1 ETH = 1000 RUSD for demo)
     const ethAmount = (amount / 1000).toFixed(3);
     document.getElementById('donation-amount').value = ethAmount;
-    
+
     // Highlight selected button
     document.querySelectorAll('.amount-btn').forEach(btn => btn.classList.remove('selected'));
     event.target.classList.add('selected');
@@ -2494,22 +2548,22 @@ function setDonationAmount(amount) {
 async function makeDonation() {
     const amountInput = document.getElementById('donation-amount');
     const messageInput = document.getElementById('donation-message');
-    
+
     const amount = parseFloat(amountInput.value);
     const message = messageInput.value.trim();
-    
+
     if (!amount || amount <= 0) {
         showToast('Please enter a donation amount', 'error');
         return;
     }
-    
+
     if (amount < 0.001) {
         showToast('Minimum donation is 0.001 ETH', 'error');
         return;
     }
-    
+
     showProcessing('Processing donation...');
-    
+
     try {
         // Send ETH donation to contract owner (admin)
         const owner = await stablecoin.owner();
@@ -2517,10 +2571,10 @@ async function makeDonation() {
             to: owner,
             value: ethers.parseEther(amount.toString())
         });
-        
+
         console.log('💝 Donation TX:', tx.hash);
         await tx.wait();
-        
+
         // Record donation
         const donation = {
             from: currentAccount,
@@ -2529,24 +2583,24 @@ async function makeDonation() {
             timestamp: new Date().toISOString(),
             txHash: tx.hash
         };
-        
+
         donationHistory.unshift(donation);
         saveDonationHistory();
-        
+
         closeModal();
         showSuccess(`Thank you! Your donation of ${amount} ETH has been received!`);
         showConfetti();
-        
+
         // Send alert
         sendEmergencyAlert('🎉 New Donation!', `${shortenAddress(currentAccount)} donated ${amount} ETH`, 'success');
-        
+
         // Clear form
         amountInput.value = '';
         messageInput.value = '';
-        
+
         // Update display
         updateDonorDisplay();
-        
+
     } catch (error) {
         closeModal();
         console.error('Donation error:', error);
@@ -2571,7 +2625,46 @@ function updateDonorDisplay() {
     const totalDonations = document.getElementById('total-donations');
     const donorsCount = document.getElementById('donors-count');
     const helpedCount = document.getElementById('helped-count');
-    
+
+    // If in guest mode, use impressive mock data
+    if (window.isGuestMode) {
+        const mockDonations = [
+            { from: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266', amount: 5.5, timestamp: Date.now() - 3600000 },
+            { from: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8', amount: 3.2, timestamp: Date.now() - 7200000 },
+            { from: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC', amount: 8.7, timestamp: Date.now() - 10800000 },
+            { from: '0x90F79bf6EB2c4f870365E785982E1f101E93b906', amount: 2.1, timestamp: Date.now() - 14400000 },
+            { from: '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65', amount: 10.0, timestamp: Date.now() - 18000000 },
+            { from: '0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc', amount: 4.5, timestamp: Date.now() - 21600000 },
+            { from: '0x976EA74026E726554dB657fA54763abd0C3a0aa9', amount: 6.3, timestamp: Date.now() - 25200000 },
+            { from: '0x14dC79964da2C08b23698B3D3cc7Ca32193d9955', amount: 7.8, timestamp: Date.now() - 28800000 },
+            { from: '0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f', amount: 3.9, timestamp: Date.now() - 32400000 },
+            { from: '0xa0Ee7A142d267C1f36714E4a8F75612F20a79720', amount: 12.5, timestamp: Date.now() - 36000000 }
+        ];
+
+        if (donorsList) {
+            donorsList.innerHTML = mockDonations.map((d, index) => `
+                <div class="donor-item" style="animation: slideIn ${0.3 + index * 0.1}s ease-out;">
+                    <div class="donor-avatar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"><i class="fas fa-heart"></i></div>
+                    <div class="donor-info">
+                        <span class="donor-address">${shortenAddress(d.from)}</span>
+                        <span class="donor-time">${formatTime(new Date(d.timestamp))}</span>
+                    </div>
+                    <div class="donor-amount" style="color: var(--success); font-weight: 700;">${d.amount.toFixed(1)} ETH</div>
+                </div>
+            `).join('');
+        }
+
+        const total = mockDonations.reduce((sum, d) => sum + d.amount, 0);
+        const uniqueDonors = mockDonations.length;
+
+        if (totalDonations) totalDonations.textContent = `${total.toFixed(1)} ETH`;
+        if (donorsCount) donorsCount.textContent = `${uniqueDonors}`;
+        if (helpedCount) helpedCount.textContent = '47';
+
+        return;
+    }
+
+    // Normal mode - use real data
     if (donorsList && donationHistory.length > 0) {
         donorsList.innerHTML = donationHistory.slice(0, 10).map(d => `
             <div class="donor-item">
@@ -2584,11 +2677,11 @@ function updateDonorDisplay() {
             </div>
         `).join('');
     }
-    
+
     // Calculate totals
     const total = donationHistory.reduce((sum, d) => sum + d.amount, 0);
     const uniqueDonors = new Set(donationHistory.map(d => d.from)).size;
-    
+
     if (totalDonations) totalDonations.textContent = `${total.toFixed(2)} ETH`;
     if (donorsCount) donorsCount.textContent = uniqueDonors;
     if (helpedCount) helpedCount.textContent = beneficiaries.length;
@@ -2600,21 +2693,24 @@ function updateDonorDisplay() {
 
 async function enterGuestMode(role) {
     console.log('Entering guest mode as:', role);
-    
+
     // Hide loading and login screens
     document.getElementById('loading-screen').classList.add('hidden');
     document.getElementById('login-screen').classList.add('hidden');
-    
+
     // Show app screen
     document.getElementById('app-screen').classList.remove('hidden');
-    
+
     // Set guest mode flag
     window.isGuestMode = true;
     window.guestRole = role;
-    
-    // Disable all interactive elements
+
+    // Show impressive welcome modal
+    showWelcomeModal(role);
+
+    // Disable only blockchain write actions
     disableAllInteractions();
-    
+
     // Show appropriate interface based on role
     if (role === 'admin') {
         showAdminGuestView();
@@ -2625,155 +2721,643 @@ async function enterGuestMode(role) {
     }
 }
 
+function showWelcomeModal(role) {
+    const roleEmojis = {
+        'admin': '👨‍💼',
+        'beneficiary': '🤝',
+        'public': '🌐'
+    };
+
+    const roleNames = {
+        'admin': 'Administrator Dashboard',
+        'beneficiary': 'Beneficiary Portal',
+        'public': 'Public Transparency View'
+    };
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100000;
+        animation: fadeIn 0.3s ease-out;
+    `;
+
+    modal.innerHTML = `
+        <div style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 50px;
+            border-radius: 24px;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        ">
+            <div style="font-size: 80px; margin-bottom: 20px; animation: bounce 1s ease-in-out infinite;">
+                ${roleEmojis[role]}
+            </div>
+            <h1 style="color: white; font-size: 32px; margin: 0 0 15px 0; font-weight: 800;">
+                Welcome to ${roleNames[role]}
+            </h1>
+            <div style="background: rgba(255,255,255,0.2); padding: 20px; border-radius: 12px; margin: 25px 0;">
+                <p style="color: white; font-size: 16px; line-height: 1.6; margin: 0;">
+                    <strong>🎓 IIT Kharagpur EBIS Hackathon Demo</strong><br>
+                    Disaster Relief Stablecoin System
+                </p>
+            </div>
+            <div style="text-align: left; color: white; font-size: 14px; line-height: 1.8; margin: 25px 0;">
+                <p style="margin: 8px 0;">✨ <strong>Full Feature Access:</strong> Explore everything!</p>
+                <p style="margin: 8px 0;">🗺️ <strong>Interactive Map:</strong> Real-time relief tracking</p>
+                <p style="margin: 8px 0;">📱 <strong>QR Codes:</strong> Merchant payment system</p>
+                <p style="margin: 8px 0;">🚨 <strong>Emergency Alerts:</strong> Browser notifications</p>
+                <p style="margin: 8px 0;">🔍 <strong>Full Transparency:</strong> Complete audit trail</p>
+                <p style="margin: 8px 0;">💝 <strong>Donor Portal:</strong> Community support tracking</p>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" style="
+                background: white;
+                color: #667eea;
+                border: none;
+                padding: 16px 40px;
+                border-radius: 12px;
+                font-size: 16px;
+                font-weight: 700;
+                cursor: pointer;
+                margin-top: 20px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                transition: transform 0.2s;
+            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                🚀 Start Exploring
+            </button>
+        </div>
+    `;
+
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+    `;
+    document.head.appendChild(style);
+
+    document.body.appendChild(modal);
+}
+
 function disableAllInteractions() {
-    // Disable all buttons except navigation
+    // Only disable minting and transaction buttons
     setTimeout(() => {
-        const buttons = document.querySelectorAll('button:not(.nav-item):not(.menu-toggle):not([data-page])');
-        buttons.forEach(btn => {
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-            btn.style.cursor = 'not-allowed';
-            btn.title = 'Action disabled in guest view';
+        // Disable ONLY action buttons that would write to blockchain
+        const mintBtn = document.getElementById('mint-submit');
+        const addBeneficiaryBtn = document.getElementById('add-beneficiary-submit');
+        const addMerchantBtn = document.getElementById('add-merchant-submit');
+        const makePaymentBtn = document.getElementById('make-payment-submit');
+        const emergencyBtn = document.getElementById('emergency-stop-btn');
+
+        [mintBtn, addBeneficiaryBtn, addMerchantBtn, makePaymentBtn, emergencyBtn].forEach(btn => {
+            if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+                btn.title = 'Blockchain actions disabled in guest view';
+            }
         });
-        
-        // Disable all inputs
-        const inputs = document.querySelectorAll('input, select, textarea');
-        inputs.forEach(input => {
-            input.disabled = true;
-            input.style.opacity = '0.7';
-            input.style.cursor = 'not-allowed';
-        });
-        
-        // Add guest mode banner
+
+        // Add stunning animated banner
         const header = document.querySelector('.app-header');
         if (header && !document.querySelector('.guest-banner')) {
             const banner = document.createElement('div');
             banner.className = 'guest-banner';
-            banner.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 20px; text-align: center; font-weight: 600; font-size: 12px; z-index: 10000; box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);';
-            banner.innerHTML = `<i class="fas fa-eye"></i> <strong>GUEST VIEW (READ ONLY)</strong> - Previewing ${window.guestRole} interface • <a href="index.html" style="color: #ffd700; text-decoration: underline;">Go to Live App</a>`;
+            banner.style.cssText = `
+                position: fixed; 
+                top: 0; 
+                left: 0; 
+                right: 0; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+                background-size: 200% 200%;
+                animation: gradientShift 4s ease infinite;
+                color: white; 
+                padding: 12px 20px; 
+                text-align: center; 
+                font-weight: 700; 
+                font-size: 13px; 
+                z-index: 10000; 
+                box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+                letter-spacing: 0.5px;
+            `;
+            banner.innerHTML = `
+                <i class="fas fa-award" style="animation: pulse 2s ease-in-out infinite;"></i> 
+                <strong>🎓 IIT KHARAGPUR EBIS HACKATHON DEMO</strong> - 
+                Full Feature Preview Mode • 
+                <span style="color: #ffd700;">⭐ Explore Everything!</span> • 
+                <a href="index.html" style="color: #ffffff; text-decoration: underline; font-weight: 800;">Connect Wallet for Live Access</a>
+            `;
+
+            // Add CSS animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes gradientShift {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+                @keyframes pulse {
+                    0%, 100% { transform: scale(1); opacity: 1; }
+                    50% { transform: scale(1.2); opacity: 0.8; }
+                }
+                .stat-value {
+                    animation: countUp 1s ease-out;
+                }
+                @keyframes countUp {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `;
+            document.head.appendChild(style);
+
             document.body.insertBefore(banner, document.body.firstChild);
-            document.querySelector('.app-screen').style.marginTop = '40px';
+            document.querySelector('.app-screen').style.marginTop = '48px';
         }
     }, 100);
 }
 
 function showAdminGuestView() {
     // Set mock data
-    currentRole = 'administrator';
+    currentRole = 'admin';
     isAdmin = true;
     currentAccount = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-    
-    // Update header
-    document.querySelector('.user-role').textContent = 'Administrator';
-    document.querySelector('.user-address').textContent = shortenAddress(currentAccount);
-    document.querySelector('.header-balance span').textContent = '1000.00 RUSD';
-    
-    // Show admin navigation
-    document.querySelectorAll('[data-role="admin"]').forEach(el => el.style.display = 'block');
-    
+
+    // Update header - use correct element IDs
+    const userRole = document.getElementById('user-role-display');
+    const userAddress = document.getElementById('user-address-display');
+    const headerBalance = document.getElementById('header-balance');
+
+    if (userRole) userRole.textContent = 'Administrator';
+    if (userAddress) userAddress.textContent = shortenAddress(currentAccount);
+    if (headerBalance) headerBalance.textContent = '2,458,750.00 RUSD';
+
+    // Show ALL navigation items for admin including admin-only sections
+    document.querySelectorAll('.nav-item').forEach(el => {
+        el.style.display = 'flex';
+        el.style.pointerEvents = 'auto';
+    });
+
+    // Show admin-only and beneficiary-only sections
+    document.querySelectorAll('.admin-only').forEach(el => {
+        el.style.display = '';
+    });
+    document.querySelectorAll('.beneficiary-only').forEach(el => {
+        el.style.display = 'none';
+    });
+
     // Navigate to dashboard
     navigateTo('dashboard');
-    
-    // Populate with mock data
+
+    // Populate with mock data immediately and after delay for animations
+    populateMockAdminData();
     setTimeout(() => {
         populateMockAdminData();
-    }, 200);
+        // Start simulated live updates
+        startGuestModeSimulation();
+    }, 300);
 }
+
 
 function showBeneficiaryGuestView() {
     // Set mock data
     currentRole = 'beneficiary';
     isBeneficiary = true;
     currentAccount = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
-    
-    // Update header
-    document.querySelector('.user-role').textContent = 'Beneficiary';
-    document.querySelector('.user-address').textContent = shortenAddress(currentAccount);
-    document.querySelector('.header-balance span').textContent = '500.00 RUSD';
-    
-    // Show beneficiary navigation
-    document.querySelectorAll('[data-role="admin"]').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('[data-role="beneficiary"]').forEach(el => el.style.display = 'block');
-    
+
+    // Update header - use correct element IDs
+    const userRole = document.getElementById('user-role-display');
+    const userAddress = document.getElementById('user-address-display');
+    const headerBalance = document.getElementById('header-balance');
+
+    if (userRole) userRole.textContent = 'Beneficiary';
+    if (userAddress) userAddress.textContent = shortenAddress(currentAccount);
+    if (headerBalance) headerBalance.textContent = '5,000.00 RUSD';
+
+    // Show beneficiary navigation items - hide admin pages, show wallet/payment
+    document.querySelectorAll('.nav-item').forEach(el => {
+        const page = el.dataset.page;
+        // Hide only admin-specific pages (beneficiaries management, merchants management, mint)
+        if (page === 'mint' || page === 'beneficiaries' || page === 'merchants') {
+            el.style.display = 'none';
+        } else {
+            el.style.display = 'flex';
+            el.style.pointerEvents = 'auto';
+        }
+    });
+
+    // Show beneficiary-only sections, hide admin-only
+    document.querySelectorAll('.admin-only').forEach(el => {
+        el.style.display = 'none';
+    });
+    document.querySelectorAll('.beneficiary-only').forEach(el => {
+        el.style.display = '';
+    });
+
     // Navigate to wallet page
     navigateTo('wallet');
-    
-    // Populate with mock data
+
+    // Populate with mock data immediately and after delay
+    populateMockBeneficiaryData();
     setTimeout(() => {
         populateMockBeneficiaryData();
-    }, 200);
+        startGuestModeSimulation();
+    }, 300);
 }
+
 
 function showPublicGuestView() {
     // Set mock data
     currentRole = 'public';
     currentAccount = '0x0000000000000000000000000000000000000000';
-    
-    // Update header
-    document.querySelector('.user-role').textContent = 'Public Viewer';
-    document.querySelector('.user-address').textContent = 'Read Only Access';
-    document.querySelector('.header-balance').style.display = 'none';
-    
-    // Show only public navigation
-    document.querySelectorAll('[data-role="admin"]').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('[data-role="beneficiary"]').forEach(el => el.style.display = 'none');
-    
-    // Navigate to audit page
-    navigateTo('audit');
-    
-    // Populate with mock data
+
+    // Update header - use correct element IDs
+    const userRole = document.getElementById('user-role-display');
+    const userAddress = document.getElementById('user-address-display');
+    const headerBalance = document.getElementById('header-balance');
+    const headerBalanceContainer = document.querySelector('.header-balance');
+
+    if (userRole) userRole.textContent = 'Public Viewer';
+    if (userAddress) userAddress.textContent = 'Guest Access';
+    if (headerBalanceContainer) headerBalanceContainer.style.display = 'none';
+
+    // Show all PUBLIC transparency pages - hide only admin/beneficiary specific pages
+    document.querySelectorAll('.nav-item').forEach(el => {
+        const page = el.dataset.page;
+        // Public can see: dashboard, transactions, audit, map, donate
+        // Hide: beneficiaries, merchants, mint, wallet, payment
+        if (page === 'mint' || page === 'beneficiaries' || page === 'merchants' || page === 'wallet' || page === 'payment') {
+            el.style.display = 'none';
+        } else {
+            el.style.display = 'flex';
+            el.style.pointerEvents = 'auto';
+        }
+    });
+
+    // Hide admin-only and beneficiary-only sections
+    document.querySelectorAll('.admin-only').forEach(el => {
+        el.style.display = 'none';
+    });
+    document.querySelectorAll('.beneficiary-only').forEach(el => {
+        el.style.display = 'none';
+    });
+
+    // Navigate to dashboard
+    navigateTo('dashboard');
+
+    // Populate with mock data immediately and after delay
+    populateMockPublicData();
     setTimeout(() => {
         populateMockPublicData();
     }, 200);
 }
 
 function populateMockAdminData() {
-    // Stats
-    document.getElementById('total-beneficiaries').textContent = '2';
-    document.getElementById('total-merchants').textContent = '5';
-    document.getElementById('total-supply').textContent = '1,000.00';
-    document.getElementById('total-transactions').textContent = '3';
-    
-    // Recent activity
-    const activityList = document.getElementById('activity-list');
+    // Fix: Use correct element IDs (stat-beneficiaries, not total-beneficiaries)
+    const statBeneficiaries = document.getElementById('stat-beneficiaries');
+    const statMerchants = document.getElementById('stat-merchants');
+    const statSupply = document.getElementById('stat-supply');
+    const statTransactions = document.getElementById('stat-transactions');
+
+    if (statBeneficiaries) statBeneficiaries.textContent = '247';
+    if (statMerchants) statMerchants.textContent = '385';
+    if (statSupply) statSupply.textContent = '12,458,750.00 RUSD';
+    if (statTransactions) statTransactions.textContent = '8,947';
+
+    // Fund Summary Panel - impressive values
+    const fundTotalSupply = document.getElementById('fund-total-supply');
+    const fundDistributed = document.getElementById('fund-distributed');
+    const fundSpent = document.getElementById('fund-spent');
+    const fundRemaining = document.getElementById('fund-remaining');
+
+    if (fundTotalSupply) fundTotalSupply.textContent = '12,458,750.00 RUSD';
+    if (fundDistributed) fundDistributed.textContent = '8,750,000.00 RUSD';
+    if (fundSpent) fundSpent.textContent = '6,125,000.00 RUSD';
+    if (fundRemaining) fundRemaining.textContent = '2,625,000.00 RUSD';
+
+    // Dashboard pie chart center value
+    const dashboardTotal = document.getElementById('dashboard-total');
+    if (dashboardTotal) dashboardTotal.textContent = '12,458,750';
+
+    // Audit stats
+    const auditTotalTx = document.getElementById('audit-total-tx');
+    const auditTotalVolume = document.getElementById('audit-total-volume');
+    const auditTotalBeneficiaries = document.getElementById('audit-total-beneficiaries');
+
+    if (auditTotalTx) auditTotalTx.textContent = '8,947';
+    if (auditTotalVolume) auditTotalVolume.textContent = '12,458,750.00 RUSD';
+    if (auditTotalBeneficiaries) auditTotalBeneficiaries.textContent = '247';
+
+    // Contract addresses display
+    const contractRusd = document.getElementById('contract-rusd');
+    const contractManager = document.getElementById('contract-manager');
+    if (contractRusd) contractRusd.textContent = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+    if (contractManager) contractManager.textContent = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512';
+
+
+    // Add comprehensive mock beneficiaries data
+    beneficiaries = [
+        { address: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8', name: 'Rajesh Kumar', category: 'SHELTER', balance: '5000', approved: true },
+        { address: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC', name: 'Priya Singh', category: 'FOOD', balance: '3500', approved: true },
+        { address: '0x90F79bf6EB2c4f870365E785982E1f101E93b906', name: 'Amit Patel', category: 'MEDICAL', balance: '7200', approved: true },
+        { address: '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65', name: 'Anita Sharma', category: 'EDUCATION', balance: '4100', approved: true },
+        { address: '0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc', name: 'Vijay Reddy', category: 'SHELTER', balance: '6300', approved: true },
+        { address: '0x976EA74026E726554dB657fA54763abd0C3a0aa9', name: 'Sunita Devi', category: 'FOOD', balance: '2800', approved: true },
+        { address: '0x14dC79964da2C08b23698B3D3cc7Ca32193d9955', name: 'Mohammad Ali', category: 'MEDICAL', balance: '5600', approved: true },
+        { address: '0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f', name: 'Lakshmi Nair', category: 'CLOTHING', balance: '3200', approved: true }
+    ];
+
+    // Add comprehensive mock merchants data
+    merchants = [
+        { address: '0xa0Ee7A142d267C1f36714E4a8F75612F20a79720', name: 'Reliance Fresh', category: 'FOOD', qrCode: 'QR_RELIANCE_001', verified: true },
+        { address: '0xBcd4042DE499D14e55001CcbB24a551F3b954096', name: 'Apollo Pharmacy', category: 'MEDICAL', qrCode: 'QR_APOLLO_001', verified: true },
+        { address: '0x71bE63f3384f5fb98995898A86B02Fb2426c5788', name: 'Metro Cash & Carry', category: 'FOOD', qrCode: 'QR_METRO_001', verified: true },
+        { address: '0xFABB0ac9d68B0B445fB7357272Ff202C5651694a', name: 'Big Bazaar', category: 'CLOTHING', qrCode: 'QR_BIGBAZAAR_001', verified: true },
+        { address: '0x1CBd3b2770909D4e10f157cABC84C7264073C9Ec', name: 'Max Hospital', category: 'MEDICAL', qrCode: 'QR_MAX_001', verified: true },
+        { address: '0xdF3e18d64BC6A983f673Ab319CCaE4f1a57C7097', name: 'DMart Supermarket', category: 'FOOD', qrCode: 'QR_DMART_001', verified: true },
+        { address: '0xcd3B766CCDd6AE721141F452C550Ca635964ce71', name: 'Fortis Healthcare', category: 'MEDICAL', qrCode: 'QR_FORTIS_001', verified: true },
+        { address: '0x2546BcD3c84621e976D8185a91A922aE77ECEc30', name: 'Spencer Retail', category: 'FOOD', qrCode: 'QR_SPENCER_001', verified: true }
+    ];
+
+    // Rich activity feed with diverse activities - use correct ID
+    const activityList = document.getElementById('recent-activity-list');
     if (activityList) {
         activityList.innerHTML = `
-            <div class="activity-item">
-                <div class="activity-icon mint">
-                    <i class="fas fa-plus"></i>
+            <div class="activity-item" style="animation: slideIn 0.3s ease-out;">
+                <div class="activity-icon mint" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <i class="fas fa-coins"></i>
                 </div>
                 <div class="activity-info">
-                    <div class="activity-title">Tokens Minted</div>
-                    <div class="activity-details">500 RUSD → 0x7099...C8</div>
-                    <div class="activity-time">3 hours ago</div>
+                    <div class="activity-title">🎯 Mass Emergency Distribution</div>
+                    <div class="activity-details">500,000 RUSD → 247 Beneficiaries</div>
+                    <div class="activity-time">2 minutes ago</div>
                 </div>
+                <div class="activity-badge success">COMPLETED</div>
+            </div>
+            <div class="activity-item" style="animation: slideIn 0.4s ease-out;">
+                <div class="activity-icon payment" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="activity-info">
+                    <div class="activity-title">🛒 High-Value Purchase</div>
+                    <div class="activity-details">Rajesh Kumar → Reliance Fresh (8,500 RUSD)</div>
+                    <div class="activity-time">5 minutes ago</div>
+                </div>
+                <div class="activity-badge warning">VERIFIED</div>
+            </div>
+            <div class="activity-item" style="animation: slideIn 0.5s ease-out;">
+                <div class="activity-icon merchant" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <i class="fas fa-store"></i>
+                </div>
+                <div class="activity-info">
+                    <div class="activity-title">✅ Multi-Sig Approval Complete</div>
+                    <div class="activity-details">Apollo Pharmacy verified (3/3 signatures)</div>
+                    <div class="activity-time">18 minutes ago</div>
+                </div>
+                <div class="activity-badge info">APPROVED</div>
+            </div>
+            <div class="activity-item" style="animation: slideIn 0.6s ease-out;">
+                <div class="activity-icon beneficiary" style="background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <div class="activity-info">
+                    <div class="activity-title">👤 Urgent Case Registered</div>
+                    <div class="activity-details">Amit Patel (MEDICAL - Critical Care)</div>
+                    <div class="activity-time">45 minutes ago</div>
+                </div>
+                <div class="activity-badge danger">URGENT</div>
+            </div>
+            <div class="activity-item" style="animation: slideIn 0.7s ease-out;">
+                <div class="activity-icon alert" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <div class="activity-info">
+                    <div class="activity-title">🚨 Emergency Alert Broadcast</div>
+                    <div class="activity-details">Cyclone warning to 247 beneficiaries + 385 merchants</div>
+                    <div class="activity-time">2 hours ago</div>
+                </div>
+                <div class="activity-badge danger">CRITICAL</div>
+            </div>
+            <div class="activity-item" style="animation: slideIn 0.8s ease-out;">
+                <div class="activity-icon timelock" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="activity-info">
+                    <div class="activity-title">⏰ Time-Lock Released</div>
+                    <div class="activity-details">150,000 RUSD unlocked for quarterly distribution</div>
+                    <div class="activity-time">5 hours ago</div>
+                </div>
+                <div class="activity-badge info">UNLOCKED</div>
+            </div>
+            <div class="activity-item" style="animation: slideIn 0.9s ease-out;">
+                <div class="activity-icon donor" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <i class="fas fa-heart"></i>
+                </div>
+                <div class="activity-info">
+                    <div class="activity-title">💝 Major Donation Received</div>
+                    <div class="activity-details">Anonymous donor contributed 25 ETH</div>
+                    <div class="activity-time">8 hours ago</div>
+                </div>
+                <div class="activity-badge success">RECEIVED</div>
             </div>
         `;
+    }
+
+    // Populate beneficiaries table
+    updateBeneficiariesTable();
+
+    // Populate merchants table
+    updateMerchantsTable();
+
+    // Add CSS animations for badges
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .activity-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .activity-badge.success {
+            background: #10b981;
+            color: white;
+        }
+        .activity-badge.warning {
+            background: #f59e0b;
+            color: white;
+        }
+        .activity-badge.info {
+            background: #667eea;
+            color: white;
+        }
+        .activity-badge.danger {
+            background: #ef4444;
+            color: white;
+        }
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .stat-value {
+            font-size: 36px !important;
+            font-weight: 800 !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: countUp 1s ease-out !important;
+        }
+    `;
+    if (!document.querySelector('#guest-mode-styles')) {
+        style.id = 'guest-mode-styles';
+        document.head.appendChild(style);
     }
 }
 
 function populateMockBeneficiaryData() {
-    // Wallet balance
+    // Set current beneficiary in mock data
+    beneficiaries = [
+        { address: currentAccount, name: 'Rajesh Kumar', category: 'SHELTER', balance: '5000', approved: true }
+    ];
+
+    // Add mock merchants for payment
+    merchants = [
+        { address: '0x976EA74026E726554dB657fA54763abd0C3a0aa9', name: 'Reliance Fresh', category: 'FOOD', qrCode: 'QR_RELIANCE_001', verified: true },
+        { address: '0x14dC79964da2C08b23698B3D3cc7Ca32193d9955', name: 'Apollo Pharmacy', category: 'MEDICAL', qrCode: 'QR_APOLLO_001', verified: true },
+        { address: '0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f', name: 'Metro Cash & Carry', category: 'FOOD', qrCode: 'QR_METRO_001', verified: true },
+        { address: '0xa0Ee7A142d267C1f36714E4a8F75612F20a79720', name: 'Big Bazaar', category: 'CLOTHING', qrCode: 'QR_BIGBAZAAR_001', verified: true },
+        { address: '0xBcd4042DE499D14e55001CcbB24a551F3b954096', name: 'Max Hospital', category: 'MEDICAL', qrCode: 'QR_MAX_001', verified: true }
+    ];
+
+    // Wallet balance with animation
     const balanceAmount = document.querySelector('.balance-amount');
     if (balanceAmount) {
-        balanceAmount.innerHTML = '500.00 <span class="currency">RUSD</span>';
+        balanceAmount.innerHTML = '5,000.00 <span class="currency">RUSD</span>';
+        balanceAmount.style.animation = 'countUp 1s ease-out';
     }
-    
-    // Transaction history
+
+    // Rich transaction history
     const txList = document.querySelector('.transactions-card .card-content');
     if (txList) {
         txList.innerHTML = `
-            <div class="transaction-item">
+            <div class="transaction-item" style="animation: slideIn 0.4s ease-out;">
                 <div class="tx-icon received">
                     <i class="fas fa-arrow-down"></i>
                 </div>
                 <div class="tx-info">
-                    <div class="tx-addresses">From: <span>0xf39F...2266</span></div>
-                    <div class="tx-time">3 hours ago</div>
+                    <div class="tx-addresses">From: <span>0xf39F...2266 (Admin)</span></div>
+                    <div class="tx-time">2 hours ago</div>
                 </div>
                 <div class="tx-amount">
-                    <div class="tx-amount-value received">+500.00 RUSD</div>
+                    <div class="tx-amount-value received">+5,000.00 RUSD</div>
                     <span class="category-badge shelter">SHELTER</span>
+                </div>
+            </div>
+            <div class="transaction-item" style="animation: slideIn 0.5s ease-out;">
+                <div class="tx-icon sent">
+                    <i class="fas fa-arrow-up"></i>
+                </div>
+                <div class="tx-info">
+                    <div class="tx-addresses">To: <span>Reliance Fresh</span></div>
+                    <div class="tx-time">5 hours ago</div>
+                </div>
+                <div class="tx-amount">
+                    <div class="tx-amount-value sent">-1,250.00 RUSD</div>
+                    <span class="category-badge food">FOOD</span>
+                </div>
+            </div>
+            <div class="transaction-item" style="animation: slideIn 0.6s ease-out;">
+                <div class="tx-icon sent">
+                    <i class="fas fa-arrow-up"></i>
+                </div>
+                <div class="tx-info">
+                    <div class="tx-addresses">To: <span>Apollo Pharmacy</span></div>
+                    <div class="tx-time">1 day ago</div>
+                </div>
+                <div class="tx-amount">
+                    <div class="tx-amount-value sent">-850.00 RUSD</div>
+                    <span class="category-badge medical">MEDICAL</span>
+                </div>
+            </div>
+            <div class="transaction-item" style="animation: slideIn 0.7s ease-out;">
+                <div class="tx-icon received">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+                <div class="tx-info">
+                    <div class="tx-addresses">From: <span>0xf39F...2266 (Admin)</span></div>
+                    <div class="tx-time">2 days ago</div>
+                </div>
+                <div class="tx-amount">
+                    <div class="tx-amount-value received">+3,000.00 RUSD</div>
+                    <span class="category-badge shelter">SHELTER</span>
+                </div>
+            </div>
+        `;
+    }
+
+    // Populate merchants list for payment page
+    updateMerchantsTable();
+
+    // Update wallet stats
+    const statsGrid = document.querySelector('.wallet-stats-grid');
+    if (statsGrid) {
+        statsGrid.innerHTML = `
+            <div class="wallet-stat-card" style="animation: slideIn 0.3s ease-out;">
+                <div class="stat-icon-small success">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+                <div>
+                    <div class="stat-label-small">Total Received</div>
+                    <div class="stat-value-small">8,000.00 RUSD</div>
+                </div>
+            </div>
+            <div class="wallet-stat-card" style="animation: slideIn 0.4s ease-out;">
+                <div class="stat-icon-small danger">
+                    <i class="fas fa-arrow-up"></i>
+                </div>
+                <div>
+                    <div class="stat-label-small">Total Spent</div>
+                    <div class="stat-value-small">3,000.00 RUSD</div>
+                </div>
+            </div>
+            <div class="wallet-stat-card" style="animation: slideIn 0.5s ease-out;">
+                <div class="stat-icon-small info">
+                    <i class="fas fa-exchange-alt"></i>
+                </div>
+                <div>
+                    <div class="stat-label-small">Transactions</div>
+                    <div class="stat-value-small">12</div>
+                </div>
+            </div>
+            <div class="wallet-stat-card" style="animation: slideIn 0.6s ease-out;">
+                <div class="stat-icon-small merchants">
+                    <i class="fas fa-store"></i>
+                </div>
+                <div>
+                    <div class="stat-label-small">Merchants Used</div>
+                    <div class="stat-value-small">5</div>
                 </div>
             </div>
         `;
@@ -2781,52 +3365,377 @@ function populateMockBeneficiaryData() {
 }
 
 function populateMockPublicData() {
-    // Audit trail
+    // Set impressive stats
+    beneficiaries = [
+        { address: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8', name: 'Rajesh Kumar', category: 'SHELTER', balance: '5000', approved: true },
+        { address: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC', name: 'Priya Singh', category: 'FOOD', balance: '3500', approved: true },
+        { address: '0x90F79bf6EB2c4f870365E785982E1f101E93b906', name: 'Amit Patel', category: 'MEDICAL', balance: '7200', approved: true }
+    ];
+
+    merchants = [
+        { address: '0x976EA74026E726554dB657fA54763abd0C3a0aa9', name: 'Reliance Fresh', category: 'FOOD', qrCode: 'QR_RELIANCE_001', verified: true },
+        { address: '0x14dC79964da2C08b23698B3D3cc7Ca32193d9955', name: 'Apollo Pharmacy', category: 'MEDICAL', qrCode: 'QR_APOLLO_001', verified: true },
+        { address: '0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f', name: 'Metro Cash & Carry', category: 'FOOD', qrCode: 'QR_METRO_001', verified: true }
+    ];
+
+    // Rich audit trail with all transaction types
     const auditList = document.getElementById('audit-list');
     if (auditList) {
         auditList.innerHTML = `
-            <div class="audit-item">
+            <div class="audit-item" style="animation: slideIn 0.4s ease-out;">
                 <div class="audit-icon mint">
-                    <i class="fas fa-plus"></i>
+                    <i class="fas fa-coins"></i>
                 </div>
                 <div class="audit-info">
-                    <div class="audit-title">Tokens Minted</div>
+                    <div class="audit-title">💰 Emergency Relief Tokens Minted</div>
                     <div class="audit-details">
                         <span class="audit-from">By: 0xf39F...2266</span>
                         <span class="audit-arrow">→</span>
-                        <span class="audit-to">To: 0x7099...C8</span>
+                        <span class="audit-to">To: Rajesh Kumar</span>
                     </div>
                     <div class="audit-meta">
-                        <span class="audit-amount">500.00 RUSD</span>
-                        <span class="audit-time">3 hours ago</span>
+                        <span class="audit-amount">5,000.00 RUSD</span>
+                        <span class="audit-time">2 hours ago</span>
+                        <span class="category-badge shelter">SHELTER</span>
+                    </div>
+                </div>
+            </div>
+            <div class="audit-item" style="animation: slideIn 0.5s ease-out;">
+                <div class="audit-icon payment">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="audit-info">
+                    <div class="audit-title">🛒 Beneficiary Purchase</div>
+                    <div class="audit-details">
+                        <span class="audit-from">From: Rajesh Kumar</span>
+                        <span class="audit-arrow">→</span>
+                        <span class="audit-to">To: Reliance Fresh</span>
+                    </div>
+                    <div class="audit-meta">
+                        <span class="audit-amount">1,250.00 RUSD</span>
+                        <span class="audit-time">5 hours ago</span>
+                        <span class="category-badge food">FOOD</span>
+                    </div>
+                </div>
+            </div>
+            <div class="audit-item" style="animation: slideIn 0.6s ease-out;">
+                <div class="audit-icon merchant">
+                    <i class="fas fa-store-alt"></i>
+                </div>
+                <div class="audit-info">
+                    <div class="audit-title">✅ Merchant Verification</div>
+                    <div class="audit-details">
+                        <span class="audit-from">Merchant: Apollo Pharmacy</span>
+                        <span class="audit-arrow">•</span>
+                        <span class="audit-to">Status: Verified</span>
+                    </div>
+                    <div class="audit-meta">
+                        <span class="audit-amount">QR Code Generated</span>
+                        <span class="audit-time">8 hours ago</span>
+                        <span class="category-badge medical">MEDICAL</span>
+                    </div>
+                </div>
+            </div>
+            <div class="audit-item" style="animation: slideIn 0.7s ease-out;">
+                <div class="audit-icon mint">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div class="audit-info">
+                    <div class="audit-title">💰 Medical Relief Distribution</div>
+                    <div class="audit-details">
+                        <span class="audit-from">By: 0xf39F...2266</span>
+                        <span class="audit-arrow">→</span>
+                        <span class="audit-to">To: Amit Patel</span>
+                    </div>
+                    <div class="audit-meta">
+                        <span class="audit-amount">7,200.00 RUSD</span>
+                        <span class="audit-time">1 day ago</span>
+                        <span class="category-badge medical">MEDICAL</span>
+                    </div>
+                </div>
+            </div>
+            <div class="audit-item" style="animation: slideIn 0.8s ease-out;">
+                <div class="audit-icon beneficiary">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <div class="audit-info">
+                    <div class="audit-title">👤 New Beneficiary Registered</div>
+                    <div class="audit-details">
+                        <span class="audit-from">Name: Priya Singh</span>
+                        <span class="audit-arrow">•</span>
+                        <span class="audit-to">Category: Food Aid</span>
+                    </div>
+                    <div class="audit-meta">
+                        <span class="audit-amount">Account Created</span>
+                        <span class="audit-time">1 day ago</span>
+                        <span class="category-badge food">FOOD</span>
+                    </div>
+                </div>
+            </div>
+            <div class="audit-item" style="animation: slideIn 0.9s ease-out;">
+                <div class="audit-icon payment">
+                    <i class="fas fa-pills"></i>
+                </div>
+                <div class="audit-info">
+                    <div class="audit-title">💊 Medical Purchase</div>
+                    <div class="audit-details">
+                        <span class="audit-from">From: Amit Patel</span>
+                        <span class="audit-arrow">→</span>
+                        <span class="audit-to">To: Apollo Pharmacy</span>
+                    </div>
+                    <div class="audit-meta">
+                        <span class="audit-amount">850.00 RUSD</span>
+                        <span class="audit-time">2 days ago</span>
+                        <span class="category-badge medical">MEDICAL</span>
                     </div>
                 </div>
             </div>
         `;
     }
-    
-    // Stats
-    if (document.getElementById('total-beneficiaries')) {
-        document.getElementById('total-beneficiaries').textContent = '2';
+
+    // Update impressive stats - FIX: use correct element IDs
+    const statBeneficiaries = document.getElementById('stat-beneficiaries');
+    const statMerchants = document.getElementById('stat-merchants');
+    const statSupply = document.getElementById('stat-supply');
+    const statTransactions = document.getElementById('stat-transactions');
+
+    if (statBeneficiaries) statBeneficiaries.textContent = '247';
+    if (statMerchants) statMerchants.textContent = '385';
+    if (statSupply) statSupply.textContent = '12,458,750.00 RUSD';
+    if (statTransactions) statTransactions.textContent = '8,947';
+
+    // Fund summary for public view
+    const fundTotalSupply = document.getElementById('fund-total-supply');
+    const fundDistributed = document.getElementById('fund-distributed');
+    const fundSpent = document.getElementById('fund-spent');
+    const fundRemaining = document.getElementById('fund-remaining');
+
+    if (fundTotalSupply) fundTotalSupply.textContent = '12,458,750.00 RUSD';
+    if (fundDistributed) fundDistributed.textContent = '8,750,000.00 RUSD';
+    if (fundSpent) fundSpent.textContent = '6,125,000.00 RUSD';
+    if (fundRemaining) fundRemaining.textContent = '2,625,000.00 RUSD';
+
+    // Dashboard total
+    const dashboardTotal = document.getElementById('dashboard-total');
+    if (dashboardTotal) dashboardTotal.textContent = '12,458,750';
+
+    // Audit page stats
+    const auditTotalTx = document.getElementById('audit-total-tx');
+    const auditTotalVolume = document.getElementById('audit-total-volume');
+    const auditTotalBeneficiaries = document.getElementById('audit-total-beneficiaries');
+
+    if (auditTotalTx) auditTotalTx.textContent = '8,947';
+    if (auditTotalVolume) auditTotalVolume.textContent = '12,458,750.00 RUSD';
+    if (auditTotalBeneficiaries) auditTotalBeneficiaries.textContent = '247';
+
+    // Contract addresses
+    const contractRusd = document.getElementById('contract-rusd');
+    const contractManager = document.getElementById('contract-manager');
+    if (contractRusd) contractRusd.textContent = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+    if (contractManager) contractManager.textContent = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512';
+
+    // Recent activity for dashboard
+    const activityList = document.getElementById('recent-activity-list');
+    if (activityList) {
+        activityList.innerHTML = `
+            <div class="activity-item">
+                <div class="activity-icon transfer"><i class="fas fa-exchange-alt"></i></div>
+                <div class="activity-info">
+                    <div class="activity-text">0xf39F...2266 → 0x7099...79C8</div>
+                    <div class="activity-time">2 min ago</div>
+                </div>
+                <div class="tx-amount">
+                    <div class="tx-amount-value">5,000.00 RUSD</div>
+                    <span class="category-badge shelter">SHELTER</span>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon transfer"><i class="fas fa-exchange-alt"></i></div>
+                <div class="activity-info">
+                    <div class="activity-text">0x7099...79C8 → 0xa0Ee...0720</div>
+                    <div class="activity-time">5 min ago</div>
+                </div>
+                <div class="tx-amount">
+                    <div class="tx-amount-value">1,250.00 RUSD</div>
+                    <span class="category-badge food">FOOD</span>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon transfer"><i class="fas fa-exchange-alt"></i></div>
+                <div class="activity-info">
+                    <div class="activity-text">0xf39F...2266 → 0x3C44...3BC</div>
+                    <div class="activity-time">12 min ago</div>
+                </div>
+                <div class="tx-amount">
+                    <div class="tx-amount-value">3,500.00 RUSD</div>
+                    <span class="category-badge medical">MEDICAL</span>
+                </div>
+            </div>
+        `;
     }
-    if (document.getElementById('total-merchants')) {
-        document.getElementById('total-merchants').textContent = '5';
+
+    // All transactions page
+    const allTransactions = document.getElementById('all-transactions');
+    if (allTransactions) {
+        allTransactions.innerHTML = `
+            <div class="transaction-item">
+                <div class="tx-icon sent"><i class="fas fa-exchange-alt"></i></div>
+                <div class="tx-info">
+                    <div class="tx-addresses">0xf39F...2266 → <span>0x7099...79C8</span></div>
+                    <div class="tx-time">Jan 12, 2026, 9:00 PM</div>
+                </div>
+                <div class="tx-amount">
+                    <div class="tx-amount-value">5,000.00 RUSD</div>
+                    <span class="category-badge shelter">SHELTER</span>
+                </div>
+            </div>
+            <div class="transaction-item">
+                <div class="tx-icon sent"><i class="fas fa-exchange-alt"></i></div>
+                <div class="tx-info">
+                    <div class="tx-addresses">0x7099...79C8 → <span>0xa0Ee...0720</span></div>
+                    <div class="tx-time">Jan 12, 2026, 8:55 PM</div>
+                </div>
+                <div class="tx-amount">
+                    <div class="tx-amount-value">1,250.00 RUSD</div>
+                    <span class="category-badge food">FOOD</span>
+                </div>
+            </div>
+            <div class="transaction-item">
+                <div class="tx-icon sent"><i class="fas fa-exchange-alt"></i></div>
+                <div class="tx-info">
+                    <div class="tx-addresses">0xf39F...2266 → <span>0x3C44...3BC</span></div>
+                    <div class="tx-time">Jan 12, 2026, 8:48 PM</div>
+                </div>
+                <div class="tx-amount">
+                    <div class="tx-amount-value">3,500.00 RUSD</div>
+                    <span class="category-badge medical">MEDICAL</span>
+                </div>
+            </div>
+            <div class="transaction-item">
+                <div class="tx-icon sent"><i class="fas fa-exchange-alt"></i></div>
+                <div class="tx-info">
+                    <div class="tx-addresses">0x3C44...3BC → <span>0xBcd4...4096</span></div>
+                    <div class="tx-time">Jan 12, 2026, 8:30 PM</div>
+                </div>
+                <div class="tx-amount">
+                    <div class="tx-amount-value">850.00 RUSD</div>
+                    <span class="category-badge medical">MEDICAL</span>
+                </div>
+            </div>
+        `;
     }
-    if (document.getElementById('total-supply')) {
-        document.getElementById('total-supply').textContent = '1,000.00';
-    }
-    if (document.getElementById('total-transactions')) {
-        document.getElementById('total-transactions').textContent = '3';
-    }
-    
-    if (totalDonations) totalDonations.textContent = total.toFixed(3) + ' ETH';
-    if (donorsCount) donorsCount.textContent = uniqueDonors.toString();
-    if (helpedCount) helpedCount.textContent = (uniqueDonors * 5).toString(); // Estimate
+
+    // Update map stats for public view
+    const mapBeneficiaries = document.getElementById('map-beneficiaries');
+    const mapMerchants = document.getElementById('map-merchants');
+    const mapDistributed = document.getElementById('map-distributed');
+
+    if (mapBeneficiaries) mapBeneficiaries.textContent = '247';
+    if (mapMerchants) mapMerchants.textContent = '385';
+    if (mapDistributed) mapDistributed.textContent = '12,458,750.00';
 }
 
-// Initialize donations and notifications on load
-document.addEventListener('DOMContentLoaded', () => {
-    loadDonationHistory();
-    // Request notification permission after a delay
-    setTimeout(requestNotificationPermission, 3000);
-});
+// ============================================
+// GUEST MODE SIMULATION - Live Updates
+// ============================================
+
+let simulationInterval = null;
+
+function startGuestModeSimulation() {
+    if (simulationInterval) return; // Already running
+
+    console.log('🎬 Starting guest mode simulation...');
+
+    // Simulate live updates every 8 seconds
+    simulationInterval = setInterval(() => {
+        if (!window.isGuestMode) {
+            clearInterval(simulationInterval);
+            simulationInterval = null;
+            return;
+        }
+
+        // Randomly add a new "live" transaction notification
+        const notifications = [
+            { msg: '💰 New distribution: 2,500 RUSD to beneficiary', type: 'success' },
+            { msg: '🛒 Purchase confirmed: 450 RUSD at Reliance Fresh', type: 'success' },
+            { msg: '✅ Merchant verified: Metro Cash & Carry', type: 'success' },
+            { msg: '👤 New beneficiary registered in Chennai zone', type: 'success' },
+            { msg: '💊 Medical aid distributed: 1,200 RUSD', type: 'success' },
+            { msg: '🏠 Shelter payment processed: 3,000 RUSD', type: 'success' }
+        ];
+
+        const notif = notifications[Math.floor(Math.random() * notifications.length)];
+        showToast(notif.msg, notif.type);
+
+        // Pulse the live indicator
+        const liveIndicator = document.getElementById('live-indicator');
+        if (liveIndicator) {
+            liveIndicator.style.animation = 'none';
+            setTimeout(() => {
+                liveIndicator.style.animation = 'pulse 1s ease-in-out';
+            }, 10);
+        }
+
+    }, 8000);
+
+    // Show initial "connected" notification
+    setTimeout(() => {
+        showToast('🔗 Connected to blockchain monitoring...', 'success');
+    }, 2000);
+}
+
+// ============================================
+// GUEST MODE DONATION SIMULATION
+// ============================================
+
+async function makeDonationGuest() {
+    const amountInput = document.getElementById('donation-amount');
+    const messageInput = document.getElementById('donation-message');
+
+    const amount = parseFloat(amountInput?.value || 0);
+    const message = messageInput?.value?.trim() || '';
+
+    if (!amount || amount <= 0) {
+        showToast('Please enter a donation amount', 'error');
+        return;
+    }
+
+    // Show processing
+    showProcessing('Processing donation...');
+
+    // Simulate transaction delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Record mock donation
+    const donation = {
+        from: '0xGuest' + Math.random().toString(16).substr(2, 8),
+        amount: amount,
+        message: message,
+        timestamp: new Date().toISOString(),
+        txHash: '0x' + Math.random().toString(16).substr(2, 64)
+    };
+
+    donationHistory.unshift(donation);
+    saveDonationHistory();
+
+    closeModal();
+    showSuccess(`Thank you! Your donation of ${amount} ETH has been recorded!`);
+    showConfetti();
+
+    // Update display
+    updateDonorDisplay();
+
+    // Clear form
+    if (amountInput) amountInput.value = '';
+    if (messageInput) messageInput.value = '';
+}
+
+// Override makeDonation for guest mode
+const originalMakeDonation = makeDonation;
+makeDonation = async function () {
+    if (window.isGuestMode) {
+        await makeDonationGuest();
+    } else {
+        await originalMakeDonation();
+    }
+};
